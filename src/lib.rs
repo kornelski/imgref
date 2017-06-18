@@ -88,6 +88,14 @@ impl<'a, T> Img<&'a [T]> {
     }
 }
 
+impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
+    type Item = Container::Item;
+    type IntoIter = Container::IntoIter;
+    fn into_iter(self) -> Container::IntoIter {
+        self.buf.into_iter()
+    }
+}
+
 impl<T> ImgVec<T> {
     /// Create a mutable view into a region within the image. See `sub_image()` for read-only views.
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> Img<&mut [T]> {
@@ -156,7 +164,8 @@ mod tests {
     fn with_slice() {
         let bytes = vec![0u8;20];
         let _ = Img::new_stride(bytes.as_slice(), 10,2,10);
-        let _ = ImgVec::new_stride(bytes, 10,2,10);
+        let vec = ImgVec::new_stride(bytes, 10,2,10);
+        for _ in vec {}
     }
     #[test]
     fn sub() {
