@@ -173,6 +173,8 @@ mod tests {
         let bytes = vec![0u8;20];
         let _ = Img::new_stride(bytes.as_slice(), 10,2,10);
         let vec = ImgVec::new_stride(bytes, 10,2,10);
+        for _ in vec.iter() {}
+        for _ in vec.as_ref().iter() {}
         for _ in vec {}
     }
     #[test]
