@@ -86,6 +86,10 @@ impl<'a, T> Img<&'a [T]> {
         let buf = &self.buf[start .. start + self.stride * height + width - self.stride];
         Self::new_stride(buf, width, height, self.stride)
     }
+
+    pub fn iter(&self) -> std::slice::Iter<T> {
+        self.buf.iter()
+    }
 }
 
 impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
@@ -117,6 +121,10 @@ impl<T> ImgVec<T> {
     #[inline]
     pub fn as_ref(&self) -> ImgRef<T> {
         self.new_buf(self.buf.as_ref())
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<T> {
+        self.buf.iter()
     }
 }
 
