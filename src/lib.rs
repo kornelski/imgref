@@ -1,3 +1,11 @@
+//! In graphics code it's very common to pass `width` and `height` along with a `Vec` of pixels, all as separate arguments. This is tedious, and can lead to errors.
+//!
+//! This crate is a simple struct that adds dimensions to the underlying buffer. This makes it easier to correctly keep track of the image size and allows passing images with just one function argument instead three or four.
+//!
+//! Additionally, it has a concept of a `stride`, which allows defining sub-regions of images without copying, as well as padding (e.g. buffers for video frames may require to be a multiple of 8, regardless of logical image size).
+//!
+//!
+
 
 /// Image owning its pixels.
 ///
@@ -12,6 +20,13 @@ pub type ImgVec<Pixel> = Img<Vec<Pixel>>;
 /// Only `width` of pixels of every `stride` can be modified. The `buf` may be longer than `height`*`stride`, but the extra space should be ignored.
 pub type ImgRef<'a, Pixel> = Img<&'a [Pixel]>;
 
+/// Additional methods that depend on buffer size
+///
+/// To use these methods you need:
+///
+/// ```rust
+/// use imgref::*;
+/// ```
 pub trait ImgExt<Pixel> {
     /// Maximum possible width of the data, including the stride.
     ///
@@ -26,6 +41,8 @@ pub trait ImgExt<Pixel> {
 }
 
 /// Basic struct used for both owned (alias `ImgVec`) and borrowed (alias `ImgRef`) image fragments.
+///
+/// Note: the fields are `pub` only because of borrow checker limitations. Please consider them as read-only.
 #[derive(Clone)]
 pub struct Img<Container> {
     /// Storage for the pixels. Usually `Vec<Pixel>` or `&[Pixel]`. See `ImgVec` and `ImgRef`.
@@ -74,10 +91,11 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
     }
 }
 
-impl<'a, T> Copy for Img<&'a [T]> {
-}
+/// References (`ImgRef`) should be passed "by value" to avoid a double indirection of `&Img<&[]>`.
+impl<'a, T> Copy for Img<&'a [T]> {}
 
 impl<'a, T> Img<&'a [T]> {
+    /// Make a reference for a part of the image, without copying any pixels.
     #[inline]
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> Self {
         assert!(height > 0);
@@ -90,6 +108,9 @@ impl<'a, T> Img<&'a [T]> {
         Self::new_stride(buf, width, height, self.stride)
     }
 
+    /// Deprecated
+    ///
+    /// Note: it iterates **all** pixels in the underlying buffer, not just limited by width/height.
     pub fn iter(&self) -> std::slice::Iter<T> {
         self.buf.iter()
     }
@@ -131,9 +152,12 @@ impl<T> ImgVec<T> {
     }
 }
 
-impl<T> Img<T> {
+impl<Container> Img<Container> {
+    /// Same as `new()`, except each row is located `stride` number of pixels after the previous one.
+    ///
+    /// Stride can be equal to `width` or larger. If it's larger, then pixels between end of previous row and start of the next are considered a padding, and may be ignored.
     #[inline]
-    pub fn new_stride(buf: T, width: usize, height: usize, stride: usize) -> Self {
+    pub fn new_stride(buf: Container, width: usize, height: usize, stride: usize) -> Self {
         assert!(height > 0);
         assert!(width > 0);
         assert!(stride >= width as usize);
@@ -147,13 +171,17 @@ impl<T> Img<T> {
         }
     }
 
+    /// Create new image with `Container` (which can be `Vec`, `&[]` or something else) with given `width` and `height` in pixels.
+    ///
+    /// Assumes the pixels in container are contiguous, layed out row by row with `width` pixels per row and at least `height` rows.
     #[inline]
-    pub fn new(buf: T, width: usize, height: usize) -> Self {
+    pub fn new(buf: Container, width: usize, height: usize) -> Self {
         Self::new_stride(buf, width, height, width)
     }
 }
 
 impl<OldContainer> Img<OldContainer> {
+    /// A convenience method for creating an image of the same size and stride, but with a new buffer.
     #[inline]
     pub fn new_buf<NewContainer, OldPixel, NewPixel>(&self, new_buf: NewContainer) -> Img<NewContainer>
         where NewContainer: AsRef<[NewPixel]>, OldContainer: AsRef<[OldPixel]> {
@@ -177,7 +205,7 @@ mod tests {
         let _ = Img::new_stride(bytes.as_slice(), 10,2,10);
         let vec = ImgVec::new_stride(bytes, 10,2,10);
         for _ in vec.iter() {}
-        for _ in vec.as_ref().iter() {}
+        for _ in vec.as_ref().buf.iter() {}
         for _ in vec {}
     }
     #[test]
