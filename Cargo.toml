@@ -1,6 +1,6 @@
 [package]
 authors = ["Kornel Lesiński <kornel@geekhood.net>"]
-categories = ["rust-patterns"]
+categories = ["rust-patterns", "multimedia::images"]
 description = "A trivial struct for interchange of pixel buffers with width, height & stride"
 documentation = "https://docs.rs/imgref/"
 homepage = "https://github.com/pornel/imgref#readme"
@@ -8,5 +8,5 @@ keywords = ["interoperability", "stride", "image"]
 license = "CC0-1.0"
 name = "imgref"
 repository = "https://github.com/pornel/imgref"
-version = "1.1.0"
+version = "1.1.1"
 
