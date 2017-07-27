@@ -13,22 +13,10 @@ pub type ImgVec<Pixel> = Img<Vec<Pixel>>;
 pub type ImgRef<'a, Pixel> = Img<&'a [Pixel]>;
 
 pub trait ImgExt<Pixel> {
-    /// Width of the image in pixels.
-    ///
-    /// Note that this isn't same as the width of the row in image data, see `stride()`
-    fn width(&self) -> usize;
-
-    /// Height of the image in pixels.
-    fn height(&self) -> usize;
-
-    /// Number of pixels to skip in the container to advance to the next row.
-    /// Note the last row may have fewer pixels than the stride.
-    fn stride(&self) -> usize;
-
     /// Maximum possible width of the data, including the stride.
     ///
     /// This method may panic if the underlying buffer is not at least `height()*stride()` pixels large.
-    fn width_padded(&self) -> usize {self.stride()}
+    fn width_padded(&self) -> usize;
 
     /// Height in number of full strides.
     /// If the underlying buffer is not an even multiple of strides, the last row is ignored.
@@ -55,13 +43,28 @@ pub struct Img<Container> {
     pub height: u32,
 }
 
+impl<Container> Img<Container> {
+     /// Width of the image in pixels.
+    ///
+    /// Note that this isn't same as the width of the row in image data, see `stride()`
+    #[inline(always)]
+    pub fn width(&self) -> usize {self.width as usize}
+
+    /// Height of the image in pixels.
+    #[inline(always)]
+    pub fn height(&self) -> usize {self.height as usize}
+
+    /// Number of pixels to skip in the container to advance to the next row.
+    /// Note the last row may have fewer pixels than the stride.
+    #[inline(always)]
+    pub fn stride(&self) -> usize {self.stride}
+}
+
 impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[Pixel]> {
     #[inline(always)]
-    fn width(&self) -> usize {self.width as usize}
-    #[inline(always)]
-    fn height(&self) -> usize {self.height as usize}
-    #[inline(always)]
-    fn stride(&self) -> usize {self.stride}
+    fn width_padded(&self) -> usize {
+        self.stride()
+    }
 
     #[inline(always)]
     fn height_padded(&self) -> usize {
