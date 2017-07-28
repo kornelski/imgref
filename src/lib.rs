@@ -4,7 +4,9 @@
 //!
 //! Additionally, it has a concept of a `stride`, which allows defining sub-regions of images without copying, as well as padding (e.g. buffers for video frames may require to be a multiple of 8, regardless of logical image size).
 //!
-//!
+//! For convenience, indexing with `img[(x,y)]` is supported.
+mod ops;
+pub use ops::*;
 
 
 /// Image owning its pixels.

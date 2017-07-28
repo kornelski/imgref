@@ -11,6 +11,8 @@ This crate is a simple struct that adds dimensions to the underlying buffer. Thi
 
 Additionally, it has a concept of a `stride`, which allows defining sub-regions of images without copying, as well as padding (e.g. buffers for video frames may require to be a multiple of 8, regardless of logical image size).
 
+For convenience, indexing with `img[(x,y)]` is supported.
+
 ```rust
 extern crate imgref;
 use imgref::*;
@@ -21,5 +23,6 @@ fn main() {
     let new_image = resize_image(img.as_ref());
 
     println("New size is {}x{}", new_image.width(), new_image.height());
+    println("And the top left pixel is {:?}", new_image[(0usize,0usize)]);
 }
 ```

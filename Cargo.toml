@@ -8,5 +8,5 @@ keywords = ["interoperability", "stride", "image"]
 license = "CC0-1.0"
 name = "imgref"
 repository = "https://github.com/pornel/imgref"
-version = "1.1.1"
+version = "1.2.0"
 
