@@ -104,9 +104,17 @@ impl<'a, T> Img<&'a [T]> {
         assert!(width > 0);
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
-        debug_assert!(self.buf.len() >= self.stride * self.height());
         let start = self.stride * top + left;
-        let buf = &self.buf[start .. start + self.stride * height + width - self.stride];
+        debug_assert!(self.buf.len() >= start + self.stride * height + width - self.stride, "the buffer is too small to fit the subimage");
+        let full_strides_end = start + self.stride * height;
+        // when left > 0 and height is full, the last line is shorter than the stride
+        let end = if self.buf.len() >= full_strides_end {
+            full_strides_end
+        } else {
+            // if can't use full buffer, then shrink to min required (last line having exact width)
+            full_strides_end + width - self.stride
+        };
+        let buf = &self.buf[start .. end];
         Self::new_stride(buf, width, height, self.stride)
     }
 
@@ -221,6 +229,11 @@ mod tests {
         {
         let refimg = img.as_ref();
         let refimg2 = refimg; // Test is Copy
+
+        // sub-image with stride hits end of the buffer
+        let s1 = refimg.sub_image(1, 0, refimg.width()-1, refimg.height());
+        let _ = s1.sub_image(1, 0, s1.width()-1, s1.height());
+
         let subimg = refimg.sub_image(1, 1, 2, 1);
         assert_eq!(subimg.buf[0], 6);
         assert_eq!(subimg.stride, refimg2.stride);
