@@ -24,6 +24,11 @@ pub type ImgVec<Pixel> = Img<Vec<Pixel>>;
 /// Only `width` of pixels of every `stride` can be modified. The `buf` may be longer than `height`*`stride`, but the extra space should be ignored.
 pub type ImgRef<'a, Pixel> = Img<&'a [Pixel]>;
 
+/// Same as `ImgRef`, but mutable
+/// Pass this structure by value (i.e. `ImgRef`, not `&ImgRef`).
+///
+pub type ImgRefMut<'a, Pixel> = Img<&'a mut [Pixel]>;
+
 /// Additional methods that depend on buffer size
 ///
 /// To use these methods you need:
@@ -144,6 +149,25 @@ impl<'a, T> ImgRef<'a, T> {
     }
 }
 
+impl<'a, T> ImgRefMut<'a, T> {
+    #[inline]
+    pub fn rows(&self) -> RowsIter<T> {
+        RowsIter {
+            width: self.width(),
+            inner: self.buf.chunks(self.stride()),
+        }
+    }
+
+    #[inline]
+    pub fn rows_mut(&mut self) -> RowsIterMut<T> {
+        let stride = self.stride();
+        RowsIterMut {
+            width: self.width(),
+            inner: self.buf.chunks_mut(stride),
+        }
+    }
+}
+
 impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
     type Item = Container::Item;
     type IntoIter = Container::IntoIter;
@@ -154,7 +178,8 @@ impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
 
 impl<T> ImgVec<T> {
     /// Create a mutable view into a region within the image. See `sub_image()` for read-only views.
-    pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> Img<&mut [T]> {
+    #[allow(deprecated)]
+    pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<T> {
         assert!(height > 0);
         assert!(width > 0);
         assert!(top+height <= self.height());
@@ -178,6 +203,19 @@ impl<T> ImgVec<T> {
     #[inline]
     pub fn as_ref(&self) -> ImgRef<T> {
         self.new_buf(self.buf.as_ref())
+    }
+
+    /// Make a mutable reference to the entire image
+    ///
+    /// The reference should be passed by value (`ImgRefMut`, not `&mut ImgRefMut`).
+    ///
+    /// See also `sub_image_mut()` and `rows_mut()`
+    #[inline]
+    pub fn as_mut(&mut self) -> ImgRefMut<T> {
+        let width = self.width();
+        let height = self.height();
+        let stride = self.stride();
+        Img::new_stride(self.buf.as_mut(), width, height, stride)
     }
 
     #[deprecated(note = "Size of this buffer may be unpredictable. Use .rows() instead")]
