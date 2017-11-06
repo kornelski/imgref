@@ -8,6 +8,8 @@
 mod ops;
 pub use ops::*;
 
+mod iter;
+pub use iter::*;
 
 /// Image owning its pixels.
 ///
@@ -53,12 +55,15 @@ pub struct Img<Container> {
     /// Number of pixels to skip in the container to advance to the next row.
     ///
     /// Note: pixels between `width` and `stride` may not be usable, and may not even exist in the last row.
+    #[deprecated(note = "Use stride()")]
     pub stride: usize,
     /// Width of the image in pixels.
     ///
     /// Note that this isn't same as the width of the row in the `buf`, see `stride`
+    #[deprecated(note = "Use width()")]
     pub width: u32,
     /// Height of the image in pixels.
+    #[deprecated(note = "Use height()")]
     pub height: u32,
 }
 
@@ -67,15 +72,18 @@ impl<Container> Img<Container> {
     ///
     /// Note that this isn't same as the width of the row in image data, see `stride()`
     #[inline(always)]
+    #[allow(deprecated)]
     pub fn width(&self) -> usize {self.width as usize}
 
     /// Height of the image in pixels.
     #[inline(always)]
+    #[allow(deprecated)]
     pub fn height(&self) -> usize {self.height as usize}
 
     /// Number of pixels to skip in the container to advance to the next row.
     /// Note the last row may have fewer pixels than the stride.
     #[inline(always)]
+    #[allow(deprecated)]
     pub fn stride(&self) -> usize {self.stride}
 }
 
@@ -88,15 +96,15 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
     #[inline(always)]
     fn height_padded(&self) -> usize {
         let len = self.buf.as_ref().len();
-        assert_eq!(0, len % self.stride);
-        len/self.stride
+        assert_eq!(0, len % self.stride());
+        len/self.stride()
     }
 }
 
 /// References (`ImgRef`) should be passed "by value" to avoid a double indirection of `&Img<&[]>`.
-impl<'a, T> Copy for Img<&'a [T]> {}
+impl<'a, T> Copy for ImgRef<'a, T> {}
 
-impl<'a, T> Img<&'a [T]> {
+impl<'a, T> ImgRef<'a, T> {
     /// Make a reference for a part of the image, without copying any pixels.
     #[inline]
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> Self {
@@ -104,23 +112,33 @@ impl<'a, T> Img<&'a [T]> {
         assert!(width > 0);
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
-        let start = self.stride * top + left;
-        debug_assert!(self.buf.len() >= start + self.stride * height + width - self.stride, "the buffer is too small to fit the subimage");
-        let full_strides_end = start + self.stride * height;
+        let stride = self.stride();
+        let start = stride * top + left;
+        debug_assert!(self.buf.len() >= start + stride * height + width - stride, "the buffer is too small to fit the subimage");
+        let full_strides_end = start + stride * height;
         // when left > 0 and height is full, the last line is shorter than the stride
         let end = if self.buf.len() >= full_strides_end {
             full_strides_end
         } else {
             // if can't use full buffer, then shrink to min required (last line having exact width)
-            full_strides_end + width - self.stride
+            full_strides_end + width - stride
         };
         let buf = &self.buf[start .. end];
-        Self::new_stride(buf, width, height, self.stride)
+        Self::new_stride(buf, width, height, stride)
+    }
+
+    #[inline]
+    pub fn rows(&self) -> RowsIter<T> {
+        RowsIter {
+            width: self.width(),
+            inner: self.buf.chunks(self.stride()),
+        }
     }
 
     /// Deprecated
     ///
     /// Note: it iterates **all** pixels in the underlying buffer, not just limited by width/height.
+    #[deprecated(note="Size of this buffer is unpredictable. Use .rows() instead")]
     pub fn iter(&self) -> std::slice::Iter<T> {
         self.buf.iter()
     }
@@ -147,18 +165,47 @@ impl<T> ImgVec<T> {
     }
 
     #[inline]
+    /// Make a reference for a part of the image, without copying any pixels.
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> ImgRef<T> {
         self.as_ref().sub_image(left, top, width, height)
     }
 
-    /// If you need a mutable reference, see `sub_image_mut()`
+    /// Make a reference to this image to pass it to functions without giving up ownership
+    ///
+    /// The reference should be passed by value (`ImgRef`, not `&ImgRef`).
+    ///
+    /// If you need a mutable reference, see `as_mut()` and `sub_image_mut()`
     #[inline]
     pub fn as_ref(&self) -> ImgRef<T> {
         self.new_buf(self.buf.as_ref())
     }
 
+    #[deprecated(note = "Size of this buffer may be unpredictable. Use .rows() instead")]
     pub fn iter(&self) -> std::slice::Iter<T> {
         self.buf.iter()
+    }
+
+    /// Iterate over rows of the image as slices
+    ///
+    /// Each slice is guaranteed to be exactly `width` pixels wide.
+    #[inline]
+    pub fn rows(&self) -> RowsIter<T> {
+        RowsIter {
+            width: self.width(),
+            inner: self.buf.chunks(self.stride()),
+        }
+    }
+
+    /// Iterate over rows of the image as mutable slices
+    ///
+    /// Each slice is guaranteed to be exactly `width` pixels wide.
+    #[inline]
+    pub fn rows_mut(&mut self) -> RowsIterMut<T> {
+        let stride = self.stride();
+        RowsIterMut {
+            width: self.width(),
+            inner: self.buf.chunks_mut(stride),
+        }
     }
 }
 
@@ -167,6 +214,7 @@ impl<Container> Img<Container> {
     ///
     /// Stride can be equal to `width` or larger. If it's larger, then pixels between end of previous row and start of the next are considered a padding, and may be ignored.
     #[inline]
+    #[allow(deprecated)]
     pub fn new_stride(buf: Container, width: usize, height: usize, stride: usize) -> Self {
         assert!(height > 0);
         assert!(width > 0);
@@ -196,7 +244,7 @@ impl<OldContainer> Img<OldContainer> {
     pub fn new_buf<NewContainer, OldPixel, NewPixel>(&self, new_buf: NewContainer) -> Img<NewContainer>
         where NewContainer: AsRef<[NewPixel]>, OldContainer: AsRef<[OldPixel]> {
         assert_eq!(self.buf.as_ref().len(), new_buf.as_ref().len());
-        Img::new_stride(new_buf, self.width(), self.height(), self.stride)
+        Img::new_stride(new_buf, self.width(), self.height(), self.stride())
     }
 }
 
@@ -210,11 +258,13 @@ mod tests {
         let _ = old.new_buf(vec![6u16;20]);
     }
     #[test]
+    #[allow(deprecated)]
     fn with_slice() {
         let bytes = vec![0u8;20];
         let _ = Img::new_stride(bytes.as_slice(), 10,2,10);
         let vec = ImgVec::new_stride(bytes, 10,2,10);
         for _ in vec.iter() {}
+        assert_eq!(2, vec.rows().count());
         for _ in vec.as_ref().buf.iter() {}
         for _ in vec {}
     }
@@ -223,8 +273,8 @@ mod tests {
         let img = Img::new_stride(vec![1,2,3,4,
                        5,6,7,8,
                        9], 3, 2, 4);
-        assert_eq!(img.buf[img.stride], 5);
-        assert_eq!(img.buf[img.stride + img.width()-1], 7);
+        assert_eq!(img.buf[img.stride()], 5);
+        assert_eq!(img.buf[img.stride() + img.width()-1], 7);
 
         {
         let refimg = img.as_ref();
@@ -236,13 +286,16 @@ mod tests {
 
         let subimg = refimg.sub_image(1, 1, 2, 1);
         assert_eq!(subimg.buf[0], 6);
-        assert_eq!(subimg.stride, refimg2.stride);
-        assert!(subimg.stride() * subimg.height() + subimg.width() - subimg.stride <= subimg.buf.len());
+        assert_eq!(subimg.stride(), refimg2.stride());
+        assert!(subimg.stride() * subimg.height() + subimg.width() - subimg.stride() <= subimg.buf.len());
         assert_eq!(refimg.buf[0], 1);
+        assert_eq!(1, subimg.rows().count());
         }
 
         let mut img = img;
-        let subimg = img.sub_image_mut(1, 1, 2, 1);
+        let mut subimg = img.sub_image_mut(1, 1, 2, 1);
+        assert_eq!(1, subimg.rows().count());
+        assert_eq!(1, subimg.rows_mut().count());
         assert_eq!(subimg.buf[0], 6);
     }
 }

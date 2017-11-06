@@ -11,9 +11,10 @@ macro_rules! impl_imgref_index {
             /// Coordinates may be outside `width`/`height` if the buffer has enough padding.
             /// The x coordinate can't exceed `stride`.
             fn index(&self, index: ($index, $index)) -> &Self::Output {
-                debug_assert_eq!(self.stride, self.stride as $index as usize);
-                debug_assert!(index.0 < self.stride as $index);
-                &self.buf[(index.1 * (self.stride as $index) + index.0) as usize]
+                let stride = self.stride();
+                debug_assert_eq!(stride, stride as $index as usize);
+                debug_assert!(index.0 < stride as $index);
+                &self.buf[(index.1 * (stride as $index) + index.0) as usize]
             }
         }
     }
@@ -28,9 +29,10 @@ macro_rules! impl_imgref_index_mut {
             /// Coordinates may be outside `width`/`height` if the buffer has enough padding.
             /// The x coordinate can't exceed `stride`.
             fn index_mut(&mut self, index: ($index, $index)) -> &mut Self::Output {
-                debug_assert_eq!(self.stride, self.stride as $index as usize);
-                debug_assert!(index.0 < self.stride as $index);
-                &mut self.buf[(index.1 * (self.stride as $index) + index.0) as usize]
+                let stride = self.stride();
+                debug_assert_eq!(stride, stride as $index as usize);
+                debug_assert!(index.0 < stride as $index);
+                &mut self.buf[(index.1 * (stride as $index) + index.0) as usize]
             }
         }
     }
