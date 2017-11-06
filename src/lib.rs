@@ -149,6 +149,20 @@ impl<'a, T> ImgRef<'a, T> {
     }
 }
 
+impl<'a, T: Copy> ImgRef<'a, T> {
+    #[inline]
+    pub fn pixels(&self) -> PixelsIter<T> {
+        PixelsIter::new(*self)
+    }
+}
+
+impl<'a, T: Copy> ImgVec<T> {
+    #[inline]
+    pub fn pixels(&self) -> PixelsIter<T> {
+        PixelsIter::new(self.as_ref())
+    }
+}
+
 impl<'a, T> ImgRefMut<'a, T> {
     #[inline]
     pub fn rows(&self) -> RowsIter<T> {
@@ -314,6 +328,9 @@ mod tests {
         assert_eq!(img.buf[img.stride()], 5);
         assert_eq!(img.buf[img.stride() + img.width()-1], 7);
 
+        assert_eq!(img.pixels().count(), img.width() * img.height());
+        assert_eq!(img.pixels().sum::<i32>(), 24);
+
         {
         let refimg = img.as_ref();
         let refimg2 = refimg; // Test is Copy
@@ -323,6 +340,8 @@ mod tests {
         let _ = s1.sub_image(1, 0, s1.width()-1, s1.height());
 
         let subimg = refimg.sub_image(1, 1, 2, 1);
+        assert_eq!(subimg.pixels().count(), subimg.width() * subimg.height());
+
         assert_eq!(subimg.buf[0], 6);
         assert_eq!(subimg.stride(), refimg2.stride());
         assert!(subimg.stride() * subimg.height() + subimg.width() - subimg.stride() <= subimg.buf.len());
