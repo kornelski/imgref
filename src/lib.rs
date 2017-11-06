@@ -1,10 +1,24 @@
-//! In graphics code it's very common to pass `width` and `height` along with a `Vec` of pixels, all as separate arguments. This is tedious, and can lead to errors.
+//! In graphics code it's very common to pass `width` and `height` along with a `Vec` of pixels,
+//! all as separate arguments. This is tedious, and can lead to errors.
 //!
-//! This crate is a simple struct that adds dimensions to the underlying buffer. This makes it easier to correctly keep track of the image size and allows passing images with just one function argument instead three or four.
+//! This crate is a simple struct that adds dimensions to the underlying buffer. This makes it easier to correctly keep track
+//! of the image size and allows passing images with just one function argument instead three or four.
 //!
-//! Additionally, it has a concept of a `stride`, which allows defining sub-regions of images without copying, as well as padding (e.g. buffers for video frames may require to be a multiple of 8, regardless of logical image size).
+//! Additionally, it has a concept of a `stride`, which allows defining sub-regions of images without copying,
+//! as well as handling padding (e.g. buffers for video frames may require to be a multiple of 8, regardless of logical image size).
 //!
-//! For convenience, indexing with `img[(x,y)]` is supported.
+//! For convenience, there are iterators over rows or all pixels of a (sub)image and
+//! pixel-based indexing directly with `img[(x,y)]` (where `x`/`y` can be `u32` as well as `usize`).
+//!
+//! `Img<Container>` type has aliases for common uses:
+//!
+//! * Owned: `ImgVec<T>` → `Img<Vec<T>>`  (use it in `struct`s and return types)
+//! * Reference: `ImgRef<T>` → `Img<&[T]>` (use it in function arguments)
+//! * Mutable reference: `ImgRefMut<T>` → `Img<&mut [T]>`
+//!
+//! It is assumed that the container is [one element per pixel](https://crates.io/crates/rgb/), e.g. `Vec<RGBA>`,
+//! and _not_ a `Vec<u8>` where 4 `u8` elements are interpreted as one pixel.
+//!
 use std::slice;
 
 mod ops;
@@ -76,20 +90,22 @@ pub trait ImgExtMut<Pixel> {
 #[derive(Clone)]
 pub struct Img<Container> {
     /// Storage for the pixels. Usually `Vec<Pixel>` or `&[Pixel]`. See `ImgVec` and `ImgRef`.
+    ///
+    /// Note that future version will make this field private. Use `.rows()` and `.pixels()` iterators where possible.
     pub buf: Container,
 
     /// Number of pixels to skip in the container to advance to the next row.
     ///
     /// Note: pixels between `width` and `stride` may not be usable, and may not even exist in the last row.
-    #[deprecated(note = "Use stride()")]
+    #[deprecated(note = "Don't access struct fields directly. Use stride()")]
     pub stride: usize,
     /// Width of the image in pixels.
     ///
     /// Note that this isn't same as the width of the row in the `buf`, see `stride`
-    #[deprecated(note = "Use width()")]
+    #[deprecated(note = "Don't access struct fields directly. Use width()")]
     pub width: u32,
     /// Height of the image in pixels.
-    #[deprecated(note = "Use height()")]
+    #[deprecated(note = "Don't access struct fields directly. Use height()")]
     pub height: u32,
 }
 
@@ -107,6 +123,7 @@ impl<Container> Img<Container> {
     pub fn height(&self) -> usize {self.height as usize}
 
     /// Number of pixels to skip in the container to advance to the next row.
+    ///
     /// Note the last row may have fewer pixels than the stride.
     #[inline(always)]
     #[allow(deprecated)]
@@ -159,14 +176,15 @@ impl<'a, T> ImgRef<'a, T> {
         assert!(left+width <= self.width());
         let stride = self.stride();
         let start = stride * top + left;
-        debug_assert!(self.buf.len() >= start + stride * height + width - stride, "the buffer is too small to fit the subimage");
         let full_strides_end = start + stride * height;
+        let min_strides_len = full_strides_end + width - stride;
+        debug_assert!(self.buf.len() >= min_strides_len, "the buffer is too small to fit the subimage");
         // when left > 0 and height is full, the last line is shorter than the stride
         let end = if self.buf.len() >= full_strides_end {
             full_strides_end
         } else {
             // if can't use full buffer, then shrink to min required (last line having exact width)
-            full_strides_end + width - stride
+            min_strides_len
         };
         let buf = &self.buf[start .. end];
         Self::new_stride(buf, width, height, stride)
@@ -222,6 +240,7 @@ impl<'a, T> ImgRefMut<'a, T> {
     }
 }
 
+#[deprecated(note = "use .rows() or .pixels() iterators which are more predictable")]
 impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
     type Item = Container::Item;
     type IntoIter = Container::IntoIter;
@@ -305,6 +324,8 @@ impl<Container> Img<Container> {
     /// Same as `new()`, except each row is located `stride` number of pixels after the previous one.
     ///
     /// Stride can be equal to `width` or larger. If it's larger, then pixels between end of previous row and start of the next are considered a padding, and may be ignored.
+    ///
+    /// The `Container` is usually a `Vec` or a slice.
     #[inline]
     #[allow(deprecated)]
     pub fn new_stride(buf: Container, width: usize, height: usize, stride: usize) -> Self {
@@ -324,6 +345,8 @@ impl<Container> Img<Container> {
     /// Create new image with `Container` (which can be `Vec`, `&[]` or something else) with given `width` and `height` in pixels.
     ///
     /// Assumes the pixels in container are contiguous, layed out row by row with `width` pixels per row and at least `height` rows.
+    ///
+    /// If the container is larger than `width`×`height` pixels, the extra rows are a considered a padding and may be ignored.
     #[inline]
     pub fn new(buf: Container, width: usize, height: usize) -> Self {
         Self::new_stride(buf, width, height, width)
