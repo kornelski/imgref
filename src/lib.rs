@@ -5,6 +5,8 @@
 //! Additionally, it has a concept of a `stride`, which allows defining sub-regions of images without copying, as well as padding (e.g. buffers for video frames may require to be a multiple of 8, regardless of logical image size).
 //!
 //! For convenience, indexing with `img[(x,y)]` is supported.
+use std::slice;
+
 mod ops;
 pub use ops::*;
 
@@ -47,6 +49,25 @@ pub trait ImgExt<Pixel> {
     ///
     /// This method may panic if the underlying buffer is not at least `height()*stride()` pixels large.
     fn height_padded(&self) -> usize;
+
+    /// Iterate over the entire buffer as rows, including all padding
+    ///
+    /// Rows will have up to `stride` width, but the last row may be shorter.
+    fn rows_padded(&self) -> slice::Chunks<Pixel>;
+}
+
+/// Additional methods that depend on buffer size
+///
+/// To use these methods you need:
+///
+/// ```rust
+/// use imgref::*;
+/// ```
+pub trait ImgExtMut<Pixel> {
+    /// Iterate over the entire buffer as rows, including all padding
+    ///
+    /// Rows will have up to `stride` width, but the last row may be shorter.
+    fn rows_padded_mut(&mut self) -> slice::ChunksMut<Pixel>;
 }
 
 /// Basic struct used for both owned (alias `ImgVec`) and borrowed (alias `ImgRef`) image fragments.
@@ -103,6 +124,25 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
         let len = self.buf.as_ref().len();
         assert_eq!(0, len % self.stride());
         len/self.stride()
+    }
+
+    /// Iterate over the entire buffer as rows, including all padding
+    ///
+    /// Rows will have up to `stride` width, but the last row may be shorter.
+    #[inline(always)]
+    fn rows_padded(&self) -> slice::Chunks<Pixel> {
+        self.buf.as_ref().chunks(self.stride())
+    }
+}
+
+impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut<[Pixel]> {
+    /// Iterate over the entire buffer as rows, including all padding
+    ///
+    /// Rows will have up to `stride` width, but the last row may be shorter.
+    #[inline]
+    fn rows_padded_mut(&mut self) -> slice::ChunksMut<Pixel> {
+        let stride = self.stride();
+        self.buf.as_mut().chunks_mut(stride)
     }
 }
 
