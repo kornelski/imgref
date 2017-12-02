@@ -192,9 +192,10 @@ impl<'a, T> ImgRef<'a, T> {
 
     #[inline]
     pub fn rows(&self) -> RowsIter<T> {
+        let non_padded = &self.buf[0..self.buf.len().min(self.stride() * self.height())];
         RowsIter {
             width: self.width(),
-            inner: self.buf.chunks(self.stride()),
+            inner: non_padded.chunks(self.stride()),
         }
     }
 
@@ -224,18 +225,23 @@ impl<'a, T: Copy> ImgVec<T> {
 impl<'a, T> ImgRefMut<'a, T> {
     #[inline]
     pub fn rows(&self) -> RowsIter<T> {
+        let non_padded = &self.buf[0..self.buf.len().min(self.stride() * self.height())];
         RowsIter {
             width: self.width(),
-            inner: self.buf.chunks(self.stride()),
+            inner: non_padded.chunks(self.stride()),
         }
     }
 
     #[inline]
     pub fn rows_mut(&mut self) -> RowsIterMut<T> {
         let stride = self.stride();
+        let width = self.width();
+        let height = self.height();
+        let len = self.buf.len();
+        let non_padded = &mut self.buf[0..len.min(stride * height)];
         RowsIterMut {
-            width: self.width(),
-            inner: self.buf.chunks_mut(stride),
+            width,
+            inner: non_padded.chunks_mut(stride),
         }
     }
 }
@@ -417,5 +423,11 @@ mod tests {
         assert_eq!(1, subimg.rows().count());
         assert_eq!(1, subimg.rows_mut().count());
         assert_eq!(subimg.buf[0], 6);
+    }
+
+    #[test]
+    fn rows() {
+        let img = ImgVec::new_stride(vec![0u8; 10000], 10, 15, 100);
+        assert_eq!(img.height(), img.rows().count());
     }
 }
