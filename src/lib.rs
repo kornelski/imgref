@@ -128,6 +128,16 @@ impl<Container> Img<Container> {
     #[inline(always)]
     #[allow(deprecated)]
     pub fn stride(&self) -> usize {self.stride}
+
+    #[inline]
+    pub fn rows_buf<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
+        let stride = self.stride();
+        let non_padded = &buf[0..buf.len().min(stride * self.height())];
+        RowsIter {
+            width: self.width(),
+            inner: non_padded.chunks(stride),
+        }
+    }
 }
 
 impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[Pixel]> {
@@ -192,11 +202,7 @@ impl<'a, T> ImgRef<'a, T> {
 
     #[inline]
     pub fn rows(&self) -> RowsIter<T> {
-        let non_padded = &self.buf[0..self.buf.len().min(self.stride() * self.height())];
-        RowsIter {
-            width: self.width(),
-            inner: non_padded.chunks(self.stride()),
-        }
+        self.rows_buf(self.buf)
     }
 
     /// Deprecated
@@ -225,11 +231,7 @@ impl<'a, T: Copy> ImgVec<T> {
 impl<'a, T> ImgRefMut<'a, T> {
     #[inline]
     pub fn rows(&self) -> RowsIter<T> {
-        let non_padded = &self.buf[0..self.buf.len().min(self.stride() * self.height())];
-        RowsIter {
-            width: self.width(),
-            inner: non_padded.chunks(self.stride()),
-        }
+        self.rows_buf(&self.buf[..])
     }
 
     #[inline]
@@ -307,10 +309,7 @@ impl<T> ImgVec<T> {
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     #[inline]
     pub fn rows(&self) -> RowsIter<T> {
-        RowsIter {
-            width: self.width(),
-            inner: self.buf.chunks(self.stride()),
-        }
+        self.rows_buf(&self.buf)
     }
 
     /// Iterate over rows of the image as mutable slices
@@ -319,9 +318,13 @@ impl<T> ImgVec<T> {
     #[inline]
     pub fn rows_mut(&mut self) -> RowsIterMut<T> {
         let stride = self.stride();
+        let width = self.width();
+        let height = self.height();
+        let len = self.buf.len();
+        let non_padded = &mut self.buf[0..len.min(stride * height)];
         RowsIterMut {
-            width: self.width(),
-            inner: self.buf.chunks_mut(stride),
+            width,
+            inner: non_padded.chunks_mut(stride),
         }
     }
 }
