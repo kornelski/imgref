@@ -19,7 +19,27 @@ impl<'a, T: 'a> Iterator for RowsIter<'a, T> {
             None => None,
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        match self.inner.nth(n) {
+            Some(s) => Some(&s[0..self.width]),
+            None => None,
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.inner.count()
+    }
 }
+
+impl<'a, T> ExactSizeIterator for RowsIter<'a, T> {}
 
 /// Rows of the image. Call `Img.rows_mut()` to create it.
 ///
@@ -39,7 +59,27 @@ impl<'a, T: 'a> Iterator for RowsIterMut<'a, T> {
             None => None,
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        match self.inner.nth(n) {
+            Some(s) => Some(&mut s[0..self.width]),
+            None => None,
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.inner.count()
+    }
 }
+
+impl<'a, T> ExactSizeIterator for RowsIterMut<'a, T> {}
 
 /// Iterates over pixels in the (sub)image. Call `Img.pixels()` to create it.
 ///
@@ -104,7 +144,17 @@ fn iter() {
             for pad in 0..3 {
                 let img = super::Img::new_stride(&buf[..], width, height, width+pad);
                 assert_eq!(width*height, img.pixels().count());
+                assert_eq!(height, img.rows().count());
                 assert_eq!(width*height, img.pixels().map(|a| a as usize).sum());
+
+                let mut iter1 = img.pixels();
+                iter1.next();
+                assert_eq!(width*height - 1, iter1.filter(|_| true).count());
+
+                let mut iter2 = img.rows();
+                iter2.next();
+                assert_eq!(height - 1, iter2.size_hint().0);
+                assert_eq!(height - 1, iter2.filter(|_| true).count());
             }
         }
     }
