@@ -1,6 +1,6 @@
 # 2D slice of a `Vec`
 
-This is the lowest common denominator struct for passiing image fragments around in Rust code.
+This is the lowest common denominator struct for passing image fragments around in Rust code.
 
 * [API Reference](https://docs.rs/imgref)
 * [Installation](https://crates.io/crates/imgref)
@@ -11,7 +11,7 @@ This crate is a simple struct that adds dimensions to the underlying buffer. Thi
 
 Additionally, it has a concept of a `stride`, which allows defining sub-regions of images without copying, as well as padding (e.g. buffers for video frames may require to be a multiple of 8, regardless of logical image size).
 
-For convenience, indexing with `img[(x,y)]` is supported.
+For convenience, it implements iterators for pixels/rows and indexing with `img[(x,y)]`.
 
 ```rust
 extern crate imgref;
@@ -22,7 +22,7 @@ fn main() {
 
     let new_image = resize_image(img.as_ref());
 
-    println("New size is {}x{}", new_image.width(), new_image.height());
-    println("And the top left pixel is {:?}", new_image[(0usize,0usize)]);
+    println("New size is {}×{}", new_image.width(), new_image.height());
+    println("And the top left pixel is {:?}", new_image[(0,0)]);
 }
 ```
