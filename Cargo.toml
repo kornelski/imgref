@@ -9,7 +9,7 @@ license = "CC0-1.0"
 name = "imgref"
 readme = "README.md"
 repository = "https://github.com/kornelski/imgref"
-version = "1.3.3"
+version = "1.3.4"
 
 [badges]
 travis-ci = { repository = "kornelski/imgref" }
