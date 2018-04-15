@@ -36,6 +36,8 @@ fn main() {
 
 ## Type aliases
 
+<img src="imgref.png" width="446" alt="stride is width of the whole buffer">
+
 This is described in [more detail in the reference](https://docs.rs/imgref).
 
 ### `ImgVec`
