@@ -3,13 +3,13 @@ authors = ["Kornel Lesiński <kornel@geekhood.net>"]
 categories = ["rust-patterns", "multimedia::images"]
 description = "A trivial struct for interchange of pixel buffers with width, height & stride"
 documentation = "https://docs.rs/imgref/"
-homepage = "https://github.com/pornel/imgref#readme"
+homepage = "https://github.com/kornelski/imgref#readme"
 keywords = ["interoperability", "stride", "image", "frame"]
 license = "CC0-1.0"
 name = "imgref"
 readme = "README.md"
-repository = "https://github.com/pornel/imgref"
+repository = "https://github.com/kornelski/imgref"
 version = "1.3.3"
 
 [badges]
-travis-ci = { repository = "pornel/imgref" }
+travis-ci = { repository = "kornelski/imgref" }
