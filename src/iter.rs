@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 /// Rows of the image. Call `Img.rows()` to create it.
 ///
 /// Each element is a slice `width` pixels wide. Ignores padding, if there's any.
+#[derive(Debug)]
 pub struct RowsIter<'a, T: 'a> {
     pub(crate) width: usize,
     pub(crate) inner: slice::Chunks<'a, T>,
@@ -44,6 +45,7 @@ impl<'a, T> ExactSizeIterator for RowsIter<'a, T> {}
 /// Rows of the image. Call `Img.rows_mut()` to create it.
 ///
 /// Each element is a slice `width` pixels wide. Ignores padding, if there's any.
+#[derive(Debug)]
 pub struct RowsIterMut<'a, T: 'a> {
     pub(crate) width: usize,
     pub(crate) inner: slice::ChunksMut<'a, T>,
@@ -84,6 +86,7 @@ impl<'a, T> ExactSizeIterator for RowsIterMut<'a, T> {}
 /// Iterates over pixels in the (sub)image. Call `Img.pixels()` to create it.
 ///
 /// Ignores padding, if there's any.
+#[derive(Debug)]
 pub struct PixelsIter<'a, T: Copy + 'a> {
     current: *const T,
     current_line_end: *const T,

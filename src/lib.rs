@@ -87,7 +87,7 @@ pub trait ImgExtMut<Pixel> {
 /// Basic struct used for both owned (alias `ImgVec`) and borrowed (alias `ImgRef`) image fragments.
 ///
 /// Note: the fields are `pub` only because of borrow checker limitations. Please consider them as read-only.
-#[derive(Clone)]
+#[derive(Debug, Default, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Img<Container> {
     /// Storage for the pixels. Usually `Vec<Pixel>` or `&[Pixel]`. See `ImgVec` and `ImgRef`.
     ///
@@ -172,9 +172,6 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
         self.buf.as_mut().chunks_mut(stride)
     }
 }
-
-/// References (`ImgRef`) should be passed "by value" to avoid a double indirection of `&Img<&[]>`.
-impl<'a, T> Copy for ImgRef<'a, T> {}
 
 impl<'a, T> ImgRef<'a, T> {
     /// Make a reference for a part of the image, without copying any pixels.
@@ -375,6 +372,18 @@ impl<OldContainer> Img<OldContainer> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    mod with_opinionated_container {
+        use super::*;
+
+        struct IDontDeriveAnything;
+
+        #[test]
+        fn compiles() {
+            let _ = Img::new(IDontDeriveAnything, 1, 1);
+        }
+    }
+
     #[test]
     fn with_vec() {
         let bytes = vec![0u8;20];
