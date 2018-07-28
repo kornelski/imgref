@@ -100,10 +100,10 @@ impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
         let width = img.width();
         let stride = img.stride();
-        debug_assert!(img.buf.len() > 0 && img.buf.len() >= stride * img.height() + width - stride);
+        debug_assert!(img.buf().len() > 0 && img.buf().len() >= stride * img.height() + width - stride);
         Self {
-           current: img.buf[0..].as_ptr(),
-           current_line_end: img.buf[width..].as_ptr(),
+           current: img.buf()[0..].as_ptr(),
+           current_line_end: img.buf()[width..].as_ptr(),
            width,
            y: img.height(),
            pad: stride - width,
