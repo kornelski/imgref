@@ -91,7 +91,8 @@ pub trait ImgExtMut<Pixel> {
 pub struct Img<Container> {
     /// Storage for the pixels. Usually `Vec<Pixel>` or `&[Pixel]`. See `ImgVec` and `ImgRef`.
     ///
-    /// Note that future version will make this field private. Use `.rows()` and `.pixels()` iterators where possible.
+    /// Note that future version will make this field private. Use `.rows()` and `.pixels()` iterators where possible, or `buf()`/`buf_mut()`/`into_buf()`.
+    #[deprecated(note = "Don't access struct fields directly. Use buf(), buf_mut() or into_buf()")]
     pub buf: Container,
 
     /// Number of pixels to skip in the container to advance to the next row.
@@ -128,6 +129,21 @@ impl<Container> Img<Container> {
     #[inline(always)]
     #[allow(deprecated)]
     pub fn stride(&self) -> usize {self.stride}
+    
+    /// Immutable reference to the pixel storage.
+    #[inline(always)]
+    #[allow(deprecated)]
+    pub fn buf(&self) -> &Container {&self.buf}
+
+    /// Mutable reference to the pixel storage.
+    #[inline(always)]
+    #[allow(deprecated)]
+    pub fn buf_mut(&mut self) -> &mut Container {&mut self.buf}
+
+    /// Get the pixel storage by consuming the image.
+    #[inline(always)]
+    #[allow(deprecated)]
+    pub fn into_buf(self) -> Container {self.buf}
 
     #[inline]
     pub fn rows_buf<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
@@ -148,7 +164,7 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
 
     #[inline(always)]
     fn height_padded(&self) -> usize {
-        let len = self.buf.as_ref().len();
+        let len = self.buf().as_ref().len();
         assert_eq!(0, len % self.stride());
         len/self.stride()
     }
@@ -158,7 +174,7 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
     /// Rows will have up to `stride` width, but the last row may be shorter.
     #[inline(always)]
     fn rows_padded(&self) -> slice::Chunks<Pixel> {
-        self.buf.as_ref().chunks(self.stride())
+        self.buf().as_ref().chunks(self.stride())
     }
 }
 
@@ -169,7 +185,7 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
     #[inline]
     fn rows_padded_mut(&mut self) -> slice::ChunksMut<Pixel> {
         let stride = self.stride();
-        self.buf.as_mut().chunks_mut(stride)
+        self.buf_mut().as_mut().chunks_mut(stride)
     }
 }
 
@@ -185,21 +201,21 @@ impl<'a, T> ImgRef<'a, T> {
         let start = stride * top + left;
         let full_strides_end = start + stride * height;
         let min_strides_len = full_strides_end + width - stride;
-        debug_assert!(self.buf.len() >= min_strides_len, "the buffer is too small to fit the subimage");
+        debug_assert!(self.buf().len() >= min_strides_len, "the buffer is too small to fit the subimage");
         // when left > 0 and height is full, the last line is shorter than the stride
-        let end = if self.buf.len() >= full_strides_end {
+        let end = if self.buf().len() >= full_strides_end {
             full_strides_end
         } else {
             // if can't use full buffer, then shrink to min required (last line having exact width)
             min_strides_len
         };
-        let buf = &self.buf[start .. end];
+        let buf = &self.buf()[start .. end];
         Self::new_stride(buf, width, height, stride)
     }
 
     #[inline]
     pub fn rows(&self) -> RowsIter<T> {
-        self.rows_buf(self.buf)
+        self.rows_buf(self.buf())
     }
 
     /// Deprecated
@@ -207,7 +223,7 @@ impl<'a, T> ImgRef<'a, T> {
     /// Note: it iterates **all** pixels in the underlying buffer, not just limited by width/height.
     #[deprecated(note="Size of this buffer is unpredictable. Use .rows() instead")]
     pub fn iter(&self) -> std::slice::Iter<T> {
-        self.buf.iter()
+        self.buf().iter()
     }
 }
 
@@ -228,7 +244,7 @@ impl<'a, T: Copy> ImgVec<T> {
 impl<'a, T> ImgRefMut<'a, T> {
     #[inline]
     pub fn rows(&self) -> RowsIter<T> {
-        self.rows_buf(&self.buf[..])
+        self.rows_buf(&self.buf()[..])
     }
 
     #[inline]
@@ -236,8 +252,8 @@ impl<'a, T> ImgRefMut<'a, T> {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();
-        let len = self.buf.len();
-        let non_padded = &mut self.buf[0..len.min(stride * height)];
+        let len = self.buf().len();
+        let non_padded = &mut self.buf_mut()[0..len.min(stride * height)];
         RowsIterMut {
             width,
             inner: non_padded.chunks_mut(stride),
@@ -250,7 +266,7 @@ impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
     type Item = Container::Item;
     type IntoIter = Container::IntoIter;
     fn into_iter(self) -> Container::IntoIter {
-        self.buf.into_iter()
+        self.into_buf().into_iter()
     }
 }
 
@@ -280,7 +296,7 @@ impl<T> ImgVec<T> {
     /// If you need a mutable reference, see `as_mut()` and `sub_image_mut()`
     #[inline]
     pub fn as_ref(&self) -> ImgRef<T> {
-        self.new_buf(self.buf.as_ref())
+        self.new_buf(self.buf().as_ref())
     }
 
     /// Make a mutable reference to the entire image
@@ -293,12 +309,12 @@ impl<T> ImgVec<T> {
         let width = self.width();
         let height = self.height();
         let stride = self.stride();
-        Img::new_stride(self.buf.as_mut(), width, height, stride)
+        Img::new_stride(self.buf_mut().as_mut(), width, height, stride)
     }
 
     #[deprecated(note = "Size of this buffer may be unpredictable. Use .rows() instead")]
     pub fn iter(&self) -> std::slice::Iter<T> {
-        self.buf.iter()
+        self.buf().iter()
     }
 
     /// Iterate over rows of the image as slices
@@ -306,7 +322,7 @@ impl<T> ImgVec<T> {
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     #[inline]
     pub fn rows(&self) -> RowsIter<T> {
-        self.rows_buf(&self.buf)
+        self.rows_buf(self.buf())
     }
 
     /// Iterate over rows of the image as mutable slices
@@ -317,8 +333,8 @@ impl<T> ImgVec<T> {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();
-        let len = self.buf.len();
-        let non_padded = &mut self.buf[0..len.min(stride * height)];
+        let len = self.buf().len();
+        let non_padded = &mut self.buf_mut()[0..len.min(stride * height)];
         RowsIterMut {
             width,
             inner: non_padded.chunks_mut(stride),
@@ -364,7 +380,7 @@ impl<OldContainer> Img<OldContainer> {
     #[inline]
     pub fn new_buf<NewContainer, OldPixel, NewPixel>(&self, new_buf: NewContainer) -> Img<NewContainer>
         where NewContainer: AsRef<[NewPixel]>, OldContainer: AsRef<[OldPixel]> {
-        assert_eq!(self.buf.as_ref().len(), new_buf.as_ref().len());
+        assert_eq!(self.buf().as_ref().len(), new_buf.as_ref().len());
         Img::new_stride(new_buf, self.width(), self.height(), self.stride())
     }
 }
@@ -398,7 +414,7 @@ mod tests {
         let vec = ImgVec::new_stride(bytes, 10,2,10);
         for _ in vec.iter() {}
         assert_eq!(2, vec.rows().count());
-        for _ in vec.as_ref().buf.iter() {}
+        for _ in vec.as_ref().buf().iter() {}
         for _ in vec {}
     }
     #[test]
@@ -406,8 +422,8 @@ mod tests {
         let img = Img::new_stride(vec![1,2,3,4,
                        5,6,7,8,
                        9], 3, 2, 4);
-        assert_eq!(img.buf[img.stride()], 5);
-        assert_eq!(img.buf[img.stride() + img.width()-1], 7);
+        assert_eq!(img.buf()[img.stride()], 5);
+        assert_eq!(img.buf()[img.stride() + img.width()-1], 7);
 
         assert_eq!(img.pixels().count(), img.width() * img.height());
         assert_eq!(img.pixels().sum::<i32>(), 24);
@@ -423,10 +439,10 @@ mod tests {
         let subimg = refimg.sub_image(1, 1, 2, 1);
         assert_eq!(subimg.pixels().count(), subimg.width() * subimg.height());
 
-        assert_eq!(subimg.buf[0], 6);
+        assert_eq!(subimg.buf()[0], 6);
         assert_eq!(subimg.stride(), refimg2.stride());
-        assert!(subimg.stride() * subimg.height() + subimg.width() - subimg.stride() <= subimg.buf.len());
-        assert_eq!(refimg.buf[0], 1);
+        assert!(subimg.stride() * subimg.height() + subimg.width() - subimg.stride() <= subimg.buf().len());
+        assert_eq!(refimg.buf()[0], 1);
         assert_eq!(1, subimg.rows().count());
         }
 
@@ -434,7 +450,7 @@ mod tests {
         let mut subimg = img.sub_image_mut(1, 1, 2, 1);
         assert_eq!(1, subimg.rows().count());
         assert_eq!(1, subimg.rows_mut().count());
-        assert_eq!(subimg.buf[0], 6);
+        assert_eq!(subimg.buf()[0], 6);
     }
 
     #[test]

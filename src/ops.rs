@@ -14,7 +14,7 @@ macro_rules! impl_imgref_index {
                 let stride = self.stride();
                 debug_assert_eq!(stride, stride as $index as usize);
                 debug_assert!(index.0 < stride as $index);
-                &self.buf[(index.1 * (stride as $index) + index.0) as usize]
+                &self.buf()[(index.1 * (stride as $index) + index.0) as usize]
             }
         }
     }
@@ -32,7 +32,7 @@ macro_rules! impl_imgref_index_mut {
                 let stride = self.stride();
                 debug_assert_eq!(stride, stride as $index as usize);
                 debug_assert!(index.0 < stride as $index);
-                &mut self.buf[(index.1 * (stride as $index) + index.0) as usize]
+                &mut self.buf_mut()[(index.1 * (stride as $index) + index.0) as usize]
             }
         }
     }
