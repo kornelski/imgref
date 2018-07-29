@@ -129,7 +129,7 @@ impl<Container> Img<Container> {
     #[inline(always)]
     #[allow(deprecated)]
     pub fn stride(&self) -> usize {self.stride}
-    
+
     /// Immutable reference to the pixel storage.
     #[inline(always)]
     #[allow(deprecated)]
@@ -193,19 +193,18 @@ impl<'a, T> ImgRef<'a, T> {
     /// Make a reference for a part of the image, without copying any pixels.
     #[inline]
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> Self {
-        assert!(height > 0);
-        assert!(width > 0);
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
         let stride = self.stride();
         let start = stride * top + left;
         let full_strides_end = start + stride * height;
-        let min_strides_len = full_strides_end + width - stride;
-        debug_assert!(self.buf().len() >= min_strides_len, "the buffer is too small to fit the subimage");
         // when left > 0 and height is full, the last line is shorter than the stride
         let end = if self.buf().len() >= full_strides_end {
             full_strides_end
         } else {
+            debug_assert!(height > 0);
+            let min_strides_len = full_strides_end + width - stride;
+            debug_assert!(self.buf().len() >= min_strides_len, "the buffer is too small to fit the subimage");
             // if can't use full buffer, then shrink to min required (last line having exact width)
             min_strides_len
         };
@@ -274,12 +273,11 @@ impl<T> ImgVec<T> {
     /// Create a mutable view into a region within the image. See `sub_image()` for read-only views.
     #[allow(deprecated)]
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<T> {
-        assert!(height > 0);
-        assert!(width > 0);
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
         let start = self.stride * top + left;
-        let buf = &mut self.buf[start .. start + self.stride * height + width - self.stride];
+        let min_buf_size = if self.height > 0 {self.stride * height + width - self.stride} else {0};
+        let buf = &mut self.buf[start .. start + min_buf_size];
         Img::new_stride(buf, width, height, self.stride)
     }
 
@@ -351,8 +349,7 @@ impl<Container> Img<Container> {
     #[inline]
     #[allow(deprecated)]
     pub fn new_stride(buf: Container, width: usize, height: usize, stride: usize) -> Self {
-        assert!(height > 0);
-        assert!(width > 0);
+        assert!(stride > 0);
         assert!(stride >= width as usize);
         debug_assert!(height < <u32>::max_value() as usize);
         debug_assert!(width < <u32>::max_value() as usize);
@@ -406,6 +403,32 @@ mod tests {
         let old = Img::new_stride(bytes, 10,2,10);
         let _ = old.new_buf(vec![6u16;20]);
     }
+
+    #[test]
+    fn zero() {
+        let bytes = vec![0u8];
+        let mut img = Img::new_stride(bytes,0,0,1);
+        let _ = img.sub_image(0,0,0,0);
+        let _ = img.sub_image_mut(0,0,0,0);
+        let _ = img.as_ref();
+    }
+
+    #[test]
+    fn zero_width() {
+        let bytes = vec![0u8];
+        let mut img = Img::new_stride(bytes,0,1,1);
+        let _ = img.sub_image(0,1,0,0);
+        let _ = img.sub_image_mut(0,0,0,1);
+    }
+
+    #[test]
+    fn zero_height() {
+        let bytes = vec![0u8];
+        let mut img = Img::new_stride(bytes,1,0,1);
+        let _ = img.sub_image(1,0,0,0);
+        let _ = img.sub_image_mut(0,0,1,0);
+    }
+
     #[test]
     #[allow(deprecated)]
     fn with_slice() {
