@@ -67,7 +67,7 @@ pub trait ImgExt<Pixel> {
     /// Iterate over the entire buffer as rows, including all padding
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
-    fn rows_padded(&self) -> slice::Chunks<Pixel>;
+    fn rows_padded(&self) -> slice::Chunks<'_, Pixel>;
 }
 
 /// Additional methods that depend on buffer size
@@ -81,7 +81,7 @@ pub trait ImgExtMut<Pixel> {
     /// Iterate over the entire buffer as rows, including all padding
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
-    fn rows_padded_mut(&mut self) -> slice::ChunksMut<Pixel>;
+    fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel>;
 }
 
 /// Basic struct used for both owned (alias `ImgVec`) and borrowed (alias `ImgRef`) image fragments.
@@ -173,7 +173,7 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
     #[inline(always)]
-    fn rows_padded(&self) -> slice::Chunks<Pixel> {
+    fn rows_padded(&self) -> slice::Chunks<'_, Pixel> {
         self.buf().as_ref().chunks(self.stride())
     }
 }
@@ -183,7 +183,7 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
     #[inline]
-    fn rows_padded_mut(&mut self) -> slice::ChunksMut<Pixel> {
+    fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel> {
         let stride = self.stride();
         self.buf_mut().as_mut().chunks_mut(stride)
     }
@@ -213,7 +213,7 @@ impl<'a, T> ImgRef<'a, T> {
     }
 
     #[inline]
-    pub fn rows(&self) -> RowsIter<T> {
+    pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf(self.buf())
     }
 
@@ -221,33 +221,33 @@ impl<'a, T> ImgRef<'a, T> {
     ///
     /// Note: it iterates **all** pixels in the underlying buffer, not just limited by width/height.
     #[deprecated(note="Size of this buffer is unpredictable. Use .rows() instead")]
-    pub fn iter(&self) -> std::slice::Iter<T> {
+    pub fn iter(&self) -> std::slice::Iter<'_, T> {
         self.buf().iter()
     }
 }
 
 impl<'a, T: Copy> ImgRef<'a, T> {
     #[inline]
-    pub fn pixels(&self) -> PixelsIter<T> {
+    pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(*self)
     }
 }
 
 impl<'a, T: Copy> ImgVec<T> {
     #[inline]
-    pub fn pixels(&self) -> PixelsIter<T> {
+    pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
 }
 
 impl<'a, T> ImgRefMut<'a, T> {
     #[inline]
-    pub fn rows(&self) -> RowsIter<T> {
+    pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf(&self.buf()[..])
     }
 
     #[inline]
-    pub fn rows_mut(&mut self) -> RowsIterMut<T> {
+    pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();
@@ -272,7 +272,7 @@ impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
 impl<T> ImgVec<T> {
     /// Create a mutable view into a region within the image. See `sub_image()` for read-only views.
     #[allow(deprecated)]
-    pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<T> {
+    pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
         let start = self.stride * top + left;
@@ -283,7 +283,7 @@ impl<T> ImgVec<T> {
 
     #[inline]
     /// Make a reference for a part of the image, without copying any pixels.
-    pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> ImgRef<T> {
+    pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> ImgRef<'_, T> {
         self.as_ref().sub_image(left, top, width, height)
     }
 
@@ -293,7 +293,7 @@ impl<T> ImgVec<T> {
     ///
     /// If you need a mutable reference, see `as_mut()` and `sub_image_mut()`
     #[inline]
-    pub fn as_ref(&self) -> ImgRef<T> {
+    pub fn as_ref(&self) -> ImgRef<'_, T> {
         self.new_buf(self.buf().as_ref())
     }
 
@@ -303,7 +303,7 @@ impl<T> ImgVec<T> {
     ///
     /// See also `sub_image_mut()` and `rows_mut()`
     #[inline]
-    pub fn as_mut(&mut self) -> ImgRefMut<T> {
+    pub fn as_mut(&mut self) -> ImgRefMut<'_, T> {
         let width = self.width();
         let height = self.height();
         let stride = self.stride();
@@ -311,7 +311,7 @@ impl<T> ImgVec<T> {
     }
 
     #[deprecated(note = "Size of this buffer may be unpredictable. Use .rows() instead")]
-    pub fn iter(&self) -> std::slice::Iter<T> {
+    pub fn iter(&self) -> std::slice::Iter<'_, T> {
         self.buf().iter()
     }
 
@@ -319,7 +319,7 @@ impl<T> ImgVec<T> {
     ///
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     #[inline]
-    pub fn rows(&self) -> RowsIter<T> {
+    pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf(self.buf())
     }
 
@@ -327,7 +327,7 @@ impl<T> ImgVec<T> {
     ///
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     #[inline]
-    pub fn rows_mut(&mut self) -> RowsIterMut<T> {
+    pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();

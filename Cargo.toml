@@ -1,15 +1,16 @@
 [package]
 authors = ["Kornel Lesiński <kornel@geekhood.net>"]
 categories = ["rust-patterns", "multimedia::images"]
-description = "A trivial struct for interchange of pixel buffers with width, height & stride"
+description = "A trivial struct for interchange of 2d-dimensional pixel buffers with width, height & stride"
 documentation = "https://docs.rs/imgref/"
-homepage = "https://github.com/kornelski/imgref#readme"
-keywords = ["interoperability", "stride", "image", "frame"]
+homepage = "https://lib.rs/crates/imgref"
+keywords = ["interoperability", "stride", "image", "frame", "vec2d"]
 license = "CC0-1.0"
 name = "imgref"
 readme = "README.md"
 repository = "https://github.com/kornelski/imgref"
-version = "1.3.5"
+version = "1.4.0"
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "kornelski/imgref" }

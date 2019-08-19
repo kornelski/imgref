@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 ///
 /// Each element is a slice `width` pixels wide. Ignores padding, if there's any.
 #[derive(Debug)]
-pub struct RowsIter<'a, T: 'a> {
+pub struct RowsIter<'a, T> {
     pub(crate) width: usize,
     pub(crate) inner: slice::Chunks<'a, T>,
 }
@@ -46,7 +46,7 @@ impl<'a, T> ExactSizeIterator for RowsIter<'a, T> {}
 ///
 /// Each element is a slice `width` pixels wide. Ignores padding, if there's any.
 #[derive(Debug)]
-pub struct RowsIterMut<'a, T: 'a> {
+pub struct RowsIterMut<'a, T> {
     pub(crate) width: usize,
     pub(crate) inner: slice::ChunksMut<'a, T>,
 }
@@ -87,7 +87,7 @@ impl<'a, T> ExactSizeIterator for RowsIterMut<'a, T> {}
 ///
 /// Ignores padding, if there's any.
 #[derive(Debug)]
-pub struct PixelsIter<'a, T: Copy + 'a> {
+pub struct PixelsIter<'a, T: Copy> {
     current: *const T,
     current_line_end: *const T,
     y: usize,

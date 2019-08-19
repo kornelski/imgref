@@ -1,6 +1,5 @@
 #![feature(test)]
 
-extern crate imgref;
 extern crate test;
 use imgref::*;
 use test::Bencher;
