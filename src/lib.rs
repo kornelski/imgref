@@ -226,6 +226,40 @@ impl<'a, T> ImgRef<'a, T> {
     }
 }
 
+impl<'a, T> ImgRefMut<'a, T> {
+    /// Turn this into immutable reference, and slice a subregion of it
+    #[inline]
+    #[allow(deprecated)]
+    pub fn sub_image(&'a mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRef<'a, T> {
+        self.new_buf(&self.buf[..]).sub_image(left, top, width, height)
+    }
+
+    /// Trim this image without copying.
+    /// Note that mutable borrows are exclusive, so it's not possible to have more than
+    /// one mutable subimage at a time.
+    #[inline]
+    #[allow(deprecated)]
+    pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
+        assert!(top+height <= self.height());
+        assert!(left+width <= self.width());
+        let stride = self.stride();
+        let start = stride * top + left;
+        let full_strides_end = start + stride * height;
+        // when left > 0 and height is full, the last line is shorter than the stride
+        let end = if self.buf().len() >= full_strides_end {
+            full_strides_end
+        } else {
+            debug_assert!(height > 0);
+            let min_strides_len = full_strides_end + width - stride;
+            debug_assert!(self.buf().len() >= min_strides_len, "the buffer is too small to fit the subimage");
+            // if can't use full buffer, then shrink to min required (last line having exact width)
+            min_strides_len
+        };
+        let buf = &mut self.buf[start .. end];
+        ImgRefMut::new_stride(buf, width, height, stride)
+    }
+}
+
 impl<'a, T: Copy> ImgRef<'a, T> {
     #[inline]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
