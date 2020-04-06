@@ -127,7 +127,58 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
                 self.current_line_end = self.current.offset(self.width as isize);
             }
             let px = *self.current;
-            self.current = self.current.offset(1);
+            self.current = self.current.add(1);
+            Some(px)
+        }
+    }
+}
+
+/// Iterates over pixels in the (sub)image. Call `Img.pixels_mut()` to create it.
+///
+/// Ignores padding, if there's any.
+#[derive(Debug)]
+pub struct PixelsIterMut<'a, T: Copy> {
+    current: *mut T,
+    current_line_end: *mut T,
+    y: usize,
+    width: usize,
+    pad: usize,
+    _dat: PhantomData<&'a mut [T]>,
+}
+
+impl<'a, T: Copy + 'a> PixelsIterMut<'a, T> {
+    #[inline]
+    pub(crate) fn new(img: &mut super::ImgRefMut<'a, T>) -> Self {
+        let width = img.width();
+        let stride = img.stride();
+        debug_assert!(!img.buf().is_empty() && img.buf().len() >= stride * img.height() + width - stride);
+        Self {
+           current: img.buf_mut().as_mut_ptr(),
+           current_line_end: img.buf_mut()[width..].as_mut_ptr(),
+           width,
+           y: img.height(),
+           pad: stride - width,
+           _dat: PhantomData,
+       }
+    }
+}
+
+impl<'a, T: Copy + 'a> Iterator for PixelsIterMut<'a, T> {
+    type Item = &'a mut T;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe {
+            if self.current >= self.current_line_end {
+                self.y -= 1;
+                if self.y == 0 {
+                    return None;
+                }
+                self.current = self.current_line_end.add(self.pad);
+                self.current_line_end = self.current.add(self.width);
+            }
+            let px = &mut *self.current;
+            self.current = self.current.add(1);
             Some(px)
         }
     }

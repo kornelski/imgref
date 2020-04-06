@@ -231,7 +231,7 @@ impl<'a, T> ImgRefMut<'a, T> {
     #[inline]
     #[allow(deprecated)]
     pub fn sub_image(&'a mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRef<'a, T> {
-        self.new_buf(&self.buf[..]).sub_image(left, top, width, height)
+        self.as_ref().sub_image(left, top, width, height)
     }
 
     /// Trim this image without copying.
@@ -258,6 +258,13 @@ impl<'a, T> ImgRefMut<'a, T> {
         let buf = &mut self.buf[start .. end];
         ImgRefMut::new_stride(buf, width, height, stride)
     }
+
+    /// Make mutable reference immutable
+    #[inline]
+    #[must_use]
+    pub fn as_ref(&self) -> ImgRef<'_, T> {
+        self.new_buf(self.buf().as_ref())
+    }
 }
 
 impl<'a, T: Copy> ImgRef<'a, T> {
@@ -267,10 +274,30 @@ impl<'a, T: Copy> ImgRef<'a, T> {
     }
 }
 
+impl<'a, T: Copy> ImgRefMut<'a, T> {
+    #[inline]
+    #[must_use]
+    pub fn pixels(&self) -> PixelsIter<'_, T> {
+        PixelsIter::new(self.as_ref())
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn pixels_mut(&mut self) -> PixelsIterMut<'_, T> {
+        PixelsIterMut::new(self)
+    }
+}
+
 impl<'a, T: Copy> ImgVec<T> {
     #[inline]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn pixels_mut(&mut self) -> PixelsIterMut<'_, T> {
+        PixelsIterMut::new(&mut self.as_mut())
     }
 }
 
@@ -514,5 +541,14 @@ mod tests {
     fn rows() {
         let img = ImgVec::new_stride(vec![0u8; 10000], 10, 15, 100);
         assert_eq!(img.height(), img.rows().count());
+    }
+
+    #[test]
+    fn mut_pixels() {
+        let mut img = ImgVec::new_stride(vec![0u8; 10000], 10, 15, 100);
+        assert_eq!(10*15, img.pixels_mut().count());
+        assert_eq!(10*15, img.as_mut().pixels().count());
+        assert_eq!(10*15, img.as_mut().pixels_mut().count());
+        assert_eq!(10*15, img.as_mut().as_ref().pixels().count());
     }
 }
