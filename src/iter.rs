@@ -97,12 +97,13 @@ pub struct PixelsIter<'a, T: Copy> {
 }
 
 impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
+    #[inline]
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
         let width = img.width();
         let stride = img.stride();
-        debug_assert!(img.buf().len() > 0 && img.buf().len() >= stride * img.height() + width - stride);
+        debug_assert!(!img.buf().is_empty() && img.buf().len() >= stride * img.height() + width - stride);
         Self {
-           current: img.buf()[0..].as_ptr(),
+           current: img.buf().as_ptr(),
            current_line_end: img.buf()[width..].as_ptr(),
            width,
            y: img.height(),
@@ -123,8 +124,8 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
                 if self.y == 0 {
                     return None;
                 }
-                self.current = self.current_line_end.offset(self.pad as isize);
-                self.current_line_end = self.current.offset(self.width as isize);
+                self.current = self.current_line_end.add(self.pad);
+                self.current_line_end = self.current.add(self.width);
             }
             let px = *self.current;
             self.current = self.current.add(1);

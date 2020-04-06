@@ -183,6 +183,7 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
     #[inline]
+    #[must_use]
     fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel> {
         let stride = self.stride();
         self.buf_mut().as_mut().chunks_mut(stride)
@@ -192,6 +193,7 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
 impl<'a, T> ImgRef<'a, T> {
     /// Make a reference for a part of the image, without copying any pixels.
     #[inline]
+    #[must_use]
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> Self {
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
@@ -213,6 +215,7 @@ impl<'a, T> ImgRef<'a, T> {
     }
 
     #[inline]
+    #[must_use]
     pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf(self.buf())
     }
@@ -230,6 +233,7 @@ impl<'a, T> ImgRefMut<'a, T> {
     /// Turn this into immutable reference, and slice a subregion of it
     #[inline]
     #[allow(deprecated)]
+    #[must_use]
     pub fn sub_image(&'a mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRef<'a, T> {
         self.as_ref().sub_image(left, top, width, height)
     }
@@ -239,6 +243,7 @@ impl<'a, T> ImgRefMut<'a, T> {
     /// one mutable subimage at a time.
     #[inline]
     #[allow(deprecated)]
+    #[must_use]
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
@@ -269,6 +274,7 @@ impl<'a, T> ImgRefMut<'a, T> {
 
 impl<'a, T: Copy> ImgRef<'a, T> {
     #[inline]
+    #[must_use]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(*self)
     }
@@ -290,6 +296,7 @@ impl<'a, T: Copy> ImgRefMut<'a, T> {
 
 impl<'a, T: Copy> ImgVec<T> {
     #[inline]
+    #[must_use]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
@@ -303,11 +310,13 @@ impl<'a, T: Copy> ImgVec<T> {
 
 impl<'a, T> ImgRefMut<'a, T> {
     #[inline]
+    #[must_use]
     pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf(&self.buf()[..])
     }
 
     #[inline]
+    #[must_use]
     pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
         let width = self.width();
@@ -333,6 +342,7 @@ impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
 impl<T> ImgVec<T> {
     /// Create a mutable view into a region within the image. See `sub_image()` for read-only views.
     #[allow(deprecated)]
+    #[must_use]
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
@@ -343,6 +353,7 @@ impl<T> ImgVec<T> {
     }
 
     #[inline]
+    #[must_use]
     /// Make a reference for a part of the image, without copying any pixels.
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> ImgRef<'_, T> {
         self.as_ref().sub_image(left, top, width, height)
@@ -354,6 +365,7 @@ impl<T> ImgVec<T> {
     ///
     /// If you need a mutable reference, see `as_mut()` and `sub_image_mut()`
     #[inline]
+    #[must_use]
     pub fn as_ref(&self) -> ImgRef<'_, T> {
         self.new_buf(self.buf().as_ref())
     }
@@ -380,6 +392,7 @@ impl<T> ImgVec<T> {
     ///
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     #[inline]
+    #[must_use]
     pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf(self.buf())
     }
@@ -388,6 +401,7 @@ impl<T> ImgVec<T> {
     ///
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     #[inline]
+    #[must_use]
     pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
         let width = self.width();
@@ -415,10 +429,10 @@ impl<Container> Img<Container> {
         debug_assert!(height < <u32>::max_value() as usize);
         debug_assert!(width < <u32>::max_value() as usize);
         Img {
-            buf: buf,
+            buf,
             width: width as u32,
             height: height as u32,
-            stride: stride,
+            stride,
         }
     }
 
