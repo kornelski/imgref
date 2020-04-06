@@ -1,5 +1,5 @@
-use std::slice;
 use std::marker::PhantomData;
+use std::slice;
 
 /// Rows of the image. Call `Img.rows()` to create it.
 ///
@@ -103,13 +103,13 @@ impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
         let stride = img.stride();
         debug_assert!(!img.buf().is_empty() && img.buf().len() >= stride * img.height() + width - stride);
         Self {
-           current: img.buf().as_ptr(),
-           current_line_end: img.buf()[width..].as_ptr(),
-           width,
-           y: img.height(),
-           pad: stride - width,
-           _dat: PhantomData,
-       }
+            current: img.buf().as_ptr(),
+            current_line_end: img.buf()[width..].as_ptr(),
+            width,
+            y: img.height(),
+            pad: stride - width,
+            _dat: PhantomData,
+        }
     }
 }
 
@@ -154,13 +154,13 @@ impl<'a, T: Copy + 'a> PixelsIterMut<'a, T> {
         let stride = img.stride();
         debug_assert!(!img.buf().is_empty() && img.buf().len() >= stride * img.height() + width - stride);
         Self {
-           current: img.buf_mut().as_mut_ptr(),
-           current_line_end: img.buf_mut()[width..].as_mut_ptr(),
-           width,
-           y: img.height(),
-           pad: stride - width,
-           _dat: PhantomData,
-       }
+            current: img.buf_mut().as_mut_ptr(),
+            current_line_end: img.buf_mut()[width..].as_mut_ptr(),
+            width,
+            y: img.height(),
+            pad: stride - width,
+            _dat: PhantomData,
+        }
     }
 }
 
@@ -187,24 +187,24 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIterMut<'a, T> {
 
 #[test]
 fn iter() {
-    let img = super::Img::new(vec![1u8,2], 1,2);
+    let img = super::Img::new(vec![1u8, 2], 1, 2);
     let mut it = img.pixels();
     assert_eq!(Some(1), it.next());
     assert_eq!(Some(2), it.next());
     assert_eq!(None, it.next());
 
-    let buf = vec![1u8; (16+3)*(8+1)];
+    let buf = vec![1u8; (16 + 3) * (8 + 1)];
     for width in 1..16 {
         for height in 1..8 {
             for pad in 0..3 {
-                let img = super::Img::new_stride(&buf[..], width, height, width+pad);
-                assert_eq!(width*height, img.pixels().count());
+                let img = super::Img::new_stride(&buf[..], width, height, width + pad);
+                assert_eq!(width * height, img.pixels().count());
                 assert_eq!(height, img.rows().count());
-                assert_eq!(width*height, img.pixels().map(|a| a as usize).sum());
+                assert_eq!(width * height, img.pixels().map(|a| a as usize).sum());
 
                 let mut iter1 = img.pixels();
                 iter1.next();
-                assert_eq!(width*height - 1, iter1.filter(|_| true).count());
+                assert_eq!(width * height - 1, iter1.filter(|_| true).count());
 
                 let mut iter2 = img.rows();
                 iter2.next();

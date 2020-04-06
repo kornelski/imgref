@@ -1,5 +1,5 @@
-use std::ops;
 use super::Img;
+use std::ops;
 
 macro_rules! impl_imgref_index {
     ($container:ty, $index:ty) => {
@@ -17,7 +17,7 @@ macro_rules! impl_imgref_index {
                 &self.buf()[(index.1 * (stride as $index) + index.0) as usize]
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_imgref_index_mut {
@@ -35,7 +35,7 @@ macro_rules! impl_imgref_index_mut {
                 &mut self.buf_mut()[(index.1 * (stride as $index) + index.0) as usize]
             }
         }
-    }
+    };
 }
 
 impl_imgref_index! {&'a [Pixel], usize}

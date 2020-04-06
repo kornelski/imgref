@@ -111,7 +111,7 @@ pub struct Img<Container> {
 }
 
 impl<Container> Img<Container> {
-     /// Width of the image in pixels.
+    /// Width of the image in pixels.
     ///
     /// Note that this isn't same as the width of the row in image data, see `stride()`
     #[inline(always)]
@@ -166,7 +166,7 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
     fn height_padded(&self) -> usize {
         let len = self.buf().as_ref().len();
         assert_eq!(0, len % self.stride());
-        len/self.stride()
+        len / self.stride()
     }
 
     /// Iterate over the entire buffer as rows, including all padding
@@ -195,8 +195,8 @@ impl<'a, T> ImgRef<'a, T> {
     #[inline]
     #[must_use]
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> Self {
-        assert!(top+height <= self.height());
-        assert!(left+width <= self.width());
+        assert!(top + height <= self.height());
+        assert!(left + width <= self.width());
         let stride = self.stride();
         let start = stride * top + left;
         let full_strides_end = start + stride * height;
@@ -210,7 +210,7 @@ impl<'a, T> ImgRef<'a, T> {
             // if can't use full buffer, then shrink to min required (last line having exact width)
             min_strides_len
         };
-        let buf = &self.buf()[start .. end];
+        let buf = &self.buf()[start..end];
         Self::new_stride(buf, width, height, stride)
     }
 
@@ -223,7 +223,7 @@ impl<'a, T> ImgRef<'a, T> {
     /// Deprecated
     ///
     /// Note: it iterates **all** pixels in the underlying buffer, not just limited by width/height.
-    #[deprecated(note="Size of this buffer is unpredictable. Use .rows() instead")]
+    #[deprecated(note = "Size of this buffer is unpredictable. Use .rows() instead")]
     pub fn iter(&self) -> std::slice::Iter<'_, T> {
         self.buf().iter()
     }
@@ -260,7 +260,7 @@ impl<'a, T> ImgRefMut<'a, T> {
             // if can't use full buffer, then shrink to min required (last line having exact width)
             min_strides_len
         };
-        let buf = &mut self.buf[start .. end];
+        let buf = &mut self.buf[start..end];
         ImgRefMut::new_stride(buf, width, height, stride)
     }
 
