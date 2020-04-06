@@ -14,13 +14,12 @@ Additionally, it has a concept of a `stride`, which allows defining sub-regions 
 For convenience, it implements iterators for pixels/rows and indexing with `img[(x,y)]`.
 
 ```rust
-extern crate imgref;
 use imgref::*;
 
 fn main() {
-    let img = Img::new(vec![0; 4], 2, 2);
+    let img = Img::new(vec![0; 1000], 50, 20); // 1000 pixels of a 50×20 image
 
-    let new_image = some_image_processing_function(img.as_ref());
+    let new_image = some_image_processing_function(img.as_ref()); // Use imgvec.as_ref() instead of &imgvec for better efficiency
 
     println("New size is {}×{}", new_image.width(), new_image.height());
     println("And the top left pixel is {:?}", new_image[(0,0)]);
@@ -51,3 +50,7 @@ Don't use `&ImgVec`. Instead call `ImgVec.as_ref()` to get a reference (`ImgRef`
 `ImgRef` is a reference to pixels owned by some other `ImgVec` or a slice. It's analogous to a 2-dimensional `&[]`.
 
 Use this type to accept read-only images as arguments in functions. Note that `ImgRef` is a `Copy` type. Pass `ImgRef`, and *not* `&ImgRef`.
+
+### Requirements
+
+* Latest stable Rust (1.42+)
