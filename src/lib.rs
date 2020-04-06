@@ -447,6 +447,30 @@ impl<Container> Img<Container> {
     }
 }
 
+impl<T: Copy> Img<Vec<T>> {
+    /// Returns buffer, width, height. Guarantees that the buffer is contiguous,
+    /// i.e. it's `width*height` elements long, and `[x + y*width]` addresses each pixel.
+    ///
+    /// Efficiently performs operation in-place. For other containers use `pixels().collect()`.
+    #[allow(deprecated)]
+    #[must_use]
+    pub fn into_contiguous_buf(mut self) -> (Vec<T>, usize, usize) {
+        let width = self.width();
+        let height = self.height();
+        let stride = self.stride();
+        if width != stride {
+            unsafe {
+                let buf = self.buf.as_mut_ptr();
+                for row in 1..height {
+                    std::ptr::copy(buf.add(row * stride), buf.add(row * width), width);
+                }
+            }
+        }
+        self.buf.truncate(width * height);
+        (self.buf, width, height)
+    }
+}
+
 impl<OldContainer> Img<OldContainer> {
     /// A convenience method for creating an image of the same size and stride, but with a new buffer.
     #[inline]
@@ -564,5 +588,22 @@ mod tests {
         assert_eq!(10*15, img.as_mut().pixels().count());
         assert_eq!(10*15, img.as_mut().pixels_mut().count());
         assert_eq!(10*15, img.as_mut().as_ref().pixels().count());
+    }
+
+    #[test]
+    fn into_contiguous_buf() {
+        let img = ImgVec::new_stride((0..10000).map(|x| x as u8).collect(), 121, 39, 166);
+        let pixels: Vec<_> = img.pixels().collect();
+        let (buf, w, h) = img.into_contiguous_buf();
+        assert_eq!(pixels, buf);
+        assert_eq!(121*39, buf.len());
+        assert_eq!(10000, buf.capacity());
+        assert_eq!(121, w);
+        assert_eq!(39, h);
+
+        let img = ImgVec::new((0..55*33).map(|x| x as u8).collect(), 55, 33);
+        let pixels: Vec<_> = img.pixels().collect();
+        let (buf, ..) = img.into_contiguous_buf();
+        assert_eq!(pixels, buf);
     }
 }
