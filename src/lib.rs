@@ -148,7 +148,7 @@ impl<Container> Img<Container> {
     #[inline]
     pub fn rows_buf<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
         let stride = self.stride();
-        let non_padded = &buf[0..buf.len().min(stride * self.height())];
+        let non_padded = &buf[0..stride * (self.height() -1) + self.width()];
         RowsIter {
             width: self.width(),
             inner: non_padded.chunks(stride),
@@ -321,8 +321,7 @@ impl<'a, T> ImgRefMut<'a, T> {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();
-        let len = self.buf().len();
-        let non_padded = &mut self.buf_mut()[0..len.min(stride * height)];
+        let non_padded = &mut self.buf_mut()[0..stride * (height -1) + width];
         RowsIterMut {
             width,
             inner: non_padded.chunks_mut(stride),
@@ -406,8 +405,7 @@ impl<T> ImgVec<T> {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();
-        let len = self.buf().len();
-        let non_padded = &mut self.buf_mut()[0..len.min(stride * height)];
+        let non_padded = &mut self.buf_mut()[0..stride * (height -1) + width];
         RowsIterMut {
             width,
             inner: non_padded.chunks_mut(stride),

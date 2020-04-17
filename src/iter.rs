@@ -17,7 +17,13 @@ impl<'a, T: 'a> Iterator for RowsIter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         match self.inner.next() {
-            Some(s) => Some(&s[0..self.width]),
+            Some(s) => {
+                // guaranteed during creation of chunks iterator
+                debug_assert!(s.len() >= self.width);
+                unsafe {
+                    Some(s.get_unchecked(0..self.width))
+                }
+            },
             None => None,
         }
     }
@@ -30,7 +36,13 @@ impl<'a, T: 'a> Iterator for RowsIter<'a, T> {
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         match self.inner.nth(n) {
-            Some(s) => Some(&s[0..self.width]),
+            Some(s) => {
+                // guaranteed during creation of chunks iterator
+                debug_assert!(s.len() >= self.width);
+                unsafe {
+                    Some(s.get_unchecked(0..self.width))
+                }
+            },
             None => None,
         }
     }
@@ -49,7 +61,13 @@ impl<'a, T: 'a> DoubleEndedIterator for RowsIter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.inner.next_back() {
-            Some(s) => Some(&s[0..self.width]),
+            Some(s) => {
+                // guaranteed during creation of chunks iterator
+                debug_assert!(s.len() >= self.width);
+                unsafe {
+                    Some(s.get_unchecked(0..self.width))
+                }
+            },
             None => None,
         }
     }
