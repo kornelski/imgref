@@ -6,6 +6,7 @@ use std::slice;
 ///
 /// Each element is a slice `width` pixels wide. Ignores padding, if there's any.
 #[derive(Debug)]
+#[must_use]
 pub struct RowsIter<'a, T> {
     pub(crate) width: usize,
     pub(crate) inner: slice::Chunks<'a, T>,
@@ -77,6 +78,7 @@ impl<'a, T: 'a> DoubleEndedIterator for RowsIter<'a, T> {
 ///
 /// Each element is a slice `width` pixels wide. Ignores padding, if there's any.
 #[derive(Debug)]
+#[must_use]
 pub struct RowsIterMut<'a, T> {
     pub(crate) width: usize,
     pub(crate) inner: slice::ChunksMut<'a, T>,
@@ -130,6 +132,7 @@ impl<'a, T: 'a> DoubleEndedIterator for RowsIterMut<'a, T> {
 ///
 /// Ignores padding, if there's any.
 #[derive(Debug)]
+#[must_use]
 pub struct PixelsIter<'a, T: Copy> {
     current: *const T,
     current_line_end: *const T,
@@ -181,6 +184,7 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
 ///
 /// Ignores padding, if there's any.
 #[derive(Debug)]
+#[must_use]
 pub struct PixelsIterMut<'a, T: Copy> {
     current: *mut T,
     current_line_end: *mut T,

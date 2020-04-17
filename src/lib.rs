@@ -55,11 +55,15 @@ pub type ImgRefMut<'a, Pixel> = Img<&'a mut [Pixel]>;
 pub trait ImgExt<Pixel> {
     /// Maximum possible width of the data, including the stride.
     ///
+    /// # Panics
+    ///
     /// This method may panic if the underlying buffer is not at least `height()*stride()` pixels large.
     fn width_padded(&self) -> usize;
 
     /// Height in number of full strides.
     /// If the underlying buffer is not an even multiple of strides, the last row is ignored.
+    ///
+    /// # Panics
     ///
     /// This method may panic if the underlying buffer is not at least `height()*stride()` pixels large.
     fn height_padded(&self) -> usize;
@@ -123,30 +127,40 @@ impl<Container> Img<Container> {
     #[allow(deprecated)]
     pub fn height(&self) -> usize {self.height as usize}
 
-    /// Number of pixels to skip in the container to advance to the next row.
+    /// Number of _pixels_ to skip in the container to advance to the next row.
     ///
     /// Note the last row may have fewer pixels than the stride.
+    /// Some APIs use number of *bytes* for a stride. You may need to multiply this one by number of pixels.
     #[inline(always)]
     #[allow(deprecated)]
     pub fn stride(&self) -> usize {self.stride}
 
-    /// Immutable reference to the pixel storage.
+    /// Immutable reference to the pixel storage. Warning: exposes stride. Use `pixels()` or `rows()` insetad.
+    ///
+    /// See also `into_contiguous_buf()`.
     #[inline(always)]
     #[allow(deprecated)]
     pub fn buf(&self) -> &Container {&self.buf}
 
-    /// Mutable reference to the pixel storage.
+    /// Mutable reference to the pixel storage. Warning: exposes stride. Use `pixels_mut()` or `rows_mut()` insetad.
+    ///
+    /// See also `into_contiguous_buf()`.
     #[inline(always)]
     #[allow(deprecated)]
     pub fn buf_mut(&mut self) -> &mut Container {&mut self.buf}
 
-    /// Get the pixel storage by consuming the image.
+    /// Get the pixel storage by consuming the image. Be careful about stride — see `into_contiguous_buf()` for a safe version.
     #[inline(always)]
     #[allow(deprecated)]
     pub fn into_buf(self) -> Container {self.buf}
 
-    #[inline]
+    #[deprecated(note = "this was meant to be private, use new_buf() and/or rows()")]
     pub fn rows_buf<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
+        self.rows_buf_internal(buf)
+    }
+
+    #[inline]
+    fn rows_buf_internal<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
         let stride = self.stride();
         let non_padded = &buf[0..stride * (self.height() -1) + self.width()];
         RowsIter {
@@ -192,6 +206,11 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
 
 impl<'a, T> ImgRef<'a, T> {
     /// Make a reference for a part of the image, without copying any pixels.
+    ///
+    /// # Panics
+    ///
+    /// It will panic if sub_image is outside of the image area
+    /// (left + width must be <= container width, etc.)
     #[inline]
     #[must_use]
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> Self {
@@ -216,8 +235,11 @@ impl<'a, T> ImgRef<'a, T> {
 
     #[inline]
     #[must_use]
+    /// Iterate over whole rows of pixels as slices
+    ///
+    /// See also `pixels()`
     pub fn rows(&self) -> RowsIter<'_, T> {
-        self.rows_buf(self.buf())
+        self.rows_buf_internal(self.buf())
     }
 
     /// Deprecated
@@ -312,7 +334,7 @@ impl<'a, T> ImgRefMut<'a, T> {
     #[inline]
     #[must_use]
     pub fn rows(&self) -> RowsIter<'_, T> {
-        self.rows_buf(&self.buf()[..])
+        self.rows_buf_internal(&self.buf()[..])
     }
 
     #[inline]
@@ -393,7 +415,7 @@ impl<T> ImgVec<T> {
     #[inline]
     #[must_use]
     pub fn rows(&self) -> RowsIter<'_, T> {
-        self.rows_buf(self.buf())
+        self.rows_buf_internal(self.buf())
     }
 
     /// Iterate over rows of the image as mutable slices
