@@ -572,6 +572,8 @@ mod tests {
         let mut subimg = img.sub_image_mut(1, 1, 2, 1);
         assert_eq!(1, subimg.rows().count());
         assert_eq!(1, subimg.rows_mut().count());
+        assert_eq!(1, subimg.rows_mut().rev().count());
+        assert_eq!(1, subimg.rows_mut().fuse().rev().count());
         assert_eq!(subimg.buf()[0], 6);
     }
 
@@ -579,6 +581,8 @@ mod tests {
     fn rows() {
         let img = ImgVec::new_stride(vec![0u8; 10000], 10, 15, 100);
         assert_eq!(img.height(), img.rows().count());
+        assert_eq!(img.height(), img.rows().rev().count());
+        assert_eq!(img.height(), img.rows().fuse().rev().count());
     }
 
     #[test]

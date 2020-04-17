@@ -1,3 +1,4 @@
+use core::iter::FusedIterator;
 use std::marker::PhantomData;
 use std::slice;
 
@@ -42,6 +43,18 @@ impl<'a, T: 'a> Iterator for RowsIter<'a, T> {
 
 impl<'a, T> ExactSizeIterator for RowsIter<'a, T> {}
 
+impl<'a, T> FusedIterator for RowsIter<'a, T> {}
+
+impl<'a, T: 'a> DoubleEndedIterator for RowsIter<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self.inner.next_back() {
+            Some(s) => Some(&s[0..self.width]),
+            None => None,
+        }
+    }
+}
+
 /// Rows of the image. Call `Img.rows_mut()` to create it.
 ///
 /// Each element is a slice `width` pixels wide. Ignores padding, if there's any.
@@ -82,6 +95,18 @@ impl<'a, T: 'a> Iterator for RowsIterMut<'a, T> {
 }
 
 impl<'a, T> ExactSizeIterator for RowsIterMut<'a, T> {}
+impl<'a, T> FusedIterator for RowsIterMut<'a, T> {}
+
+impl<'a, T: 'a> DoubleEndedIterator for RowsIterMut<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self.inner.next_back() {
+            Some(s) => Some(&mut s[0..self.width]),
+            None => None,
+        }
+    }
+}
+
 
 /// Iterates over pixels in the (sub)image. Call `Img.pixels()` to create it.
 ///
