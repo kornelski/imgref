@@ -9,7 +9,7 @@ license = "CC0-1.0"
 name = "imgref"
 readme = "README.md"
 repository = "https://github.com/kornelski/imgref"
-version = "1.4.2"
+version = "1.4.3"
 edition = "2018"
 
 [badges]
