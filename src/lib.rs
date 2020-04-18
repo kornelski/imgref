@@ -162,7 +162,10 @@ impl<Container> Img<Container> {
     #[inline]
     fn rows_buf_internal<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
         let stride = self.stride();
-        let non_padded = &buf[0..stride * (self.height() -1) + self.width()];
+        debug_assert!(self.width() <= self.stride());
+        debug_assert!(buf.len() >= self.width() * self.height());
+        assert!(stride > 0);
+        let non_padded = &buf[0..stride * self.height() + self.width() - stride];
         RowsIter {
             width: self.width(),
             inner: non_padded.chunks(stride),
@@ -196,12 +199,33 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
     /// Iterate over the entire buffer as rows, including all padding
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
+    ///
+    /// # Panics
+    ///
+    /// If stride is 0
     #[inline]
     #[must_use]
     fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel> {
         let stride = self.stride();
         self.buf_mut().as_mut().chunks_mut(stride)
     }
+}
+
+#[inline]
+fn sub_image(left: usize, top: usize, width: usize, height: usize, stride: usize, buf_len: usize) -> (usize, usize, usize) {
+    let start = stride * top + left;
+    let full_strides_end = start + stride * height;
+    // when left > 0 and height is full, the last line is shorter than the stride
+    let end = if buf_len >= full_strides_end {
+        full_strides_end
+    } else {
+        debug_assert!(height > 0);
+        let min_strides_len = full_strides_end + width - stride;
+        debug_assert!(buf_len >= min_strides_len, "the buffer is too small to fit the subimage");
+        // if can't use full buffer, then shrink to min required (last line having exact width)
+        min_strides_len
+    };
+    (start, end, stride)
 }
 
 impl<'a, T> ImgRef<'a, T> {
@@ -216,19 +240,7 @@ impl<'a, T> ImgRef<'a, T> {
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> Self {
         assert!(top + height <= self.height());
         assert!(left + width <= self.width());
-        let stride = self.stride();
-        let start = stride * top + left;
-        let full_strides_end = start + stride * height;
-        // when left > 0 and height is full, the last line is shorter than the stride
-        let end = if self.buf().len() >= full_strides_end {
-            full_strides_end
-        } else {
-            debug_assert!(height > 0);
-            let min_strides_len = full_strides_end + width - stride;
-            debug_assert!(self.buf().len() >= min_strides_len, "the buffer is too small to fit the subimage");
-            // if can't use full buffer, then shrink to min required (last line having exact width)
-            min_strides_len
-        };
+        let (start, end, stride) = sub_image(left, top, width, height, self.stride(), self.buf().len());
         let buf = &self.buf()[start..end];
         Self::new_stride(buf, width, height, stride)
     }
@@ -236,6 +248,10 @@ impl<'a, T> ImgRef<'a, T> {
     #[inline]
     #[must_use]
     /// Iterate over whole rows of pixels as slices
+    ///
+    /// # Panics
+    ///
+    /// If stride is 0
     ///
     /// See also `pixels()`
     pub fn rows(&self) -> RowsIter<'_, T> {
@@ -269,19 +285,7 @@ impl<'a, T> ImgRefMut<'a, T> {
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
-        let stride = self.stride();
-        let start = stride * top + left;
-        let full_strides_end = start + stride * height;
-        // when left > 0 and height is full, the last line is shorter than the stride
-        let end = if self.buf().len() >= full_strides_end {
-            full_strides_end
-        } else {
-            debug_assert!(height > 0);
-            let min_strides_len = full_strides_end + width - stride;
-            debug_assert!(self.buf().len() >= min_strides_len, "the buffer is too small to fit the subimage");
-            // if can't use full buffer, then shrink to min required (last line having exact width)
-            min_strides_len
-        };
+        let (start, end, stride) = sub_image(left, top, width, height, self.stride(), self.buf.len());
         let buf = &mut self.buf[start..end];
         ImgRefMut::new_stride(buf, width, height, stride)
     }
@@ -295,6 +299,9 @@ impl<'a, T> ImgRefMut<'a, T> {
 }
 
 impl<'a, T: Copy> ImgRef<'a, T> {
+    /// # Panics
+    ///
+    /// if width is 0
     #[inline]
     #[must_use]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
@@ -303,12 +310,18 @@ impl<'a, T: Copy> ImgRef<'a, T> {
 }
 
 impl<'a, T: Copy> ImgRefMut<'a, T> {
+    /// # Panics
+    ///
+    /// if width is 0
     #[inline]
     #[must_use]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
 
+    /// # Panics
+    ///
+    /// if width is 0
     #[inline]
     #[must_use]
     pub fn pixels_mut(&mut self) -> PixelsIterMut<'_, T> {
@@ -317,12 +330,18 @@ impl<'a, T: Copy> ImgRefMut<'a, T> {
 }
 
 impl<'a, T: Copy> ImgVec<T> {
+    /// # Panics
+    ///
+    /// if width is 0
     #[inline]
     #[must_use]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
 
+    /// # Panics
+    ///
+    /// if width is 0
     #[inline]
     #[must_use]
     pub fn pixels_mut(&mut self) -> PixelsIterMut<'_, T> {
@@ -331,19 +350,26 @@ impl<'a, T: Copy> ImgVec<T> {
 }
 
 impl<'a, T> ImgRefMut<'a, T> {
+    /// # Panics
+    ///
+    /// if stride is 0
     #[inline]
     #[must_use]
     pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf_internal(&self.buf()[..])
     }
 
+    /// # Panics
+    ///
+    /// if stride is 0
     #[inline]
     #[must_use]
+    #[allow(deprecated)]
     pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();
-        let non_padded = &mut self.buf_mut()[0..stride * (height -1) + width];
+        let non_padded = &mut self.buf[0..stride * height + width - stride];
         RowsIterMut {
             width,
             inner: non_padded.chunks_mut(stride),
@@ -423,11 +449,12 @@ impl<T> ImgVec<T> {
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     #[inline]
     #[must_use]
+    #[allow(deprecated)]
     pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();
-        let non_padded = &mut self.buf_mut()[0..stride * (height -1) + width];
+        let non_padded = &mut self.buf[0..stride * height + width - stride];
         RowsIterMut {
             width,
             inner: non_padded.chunks_mut(stride),
@@ -544,6 +571,7 @@ mod tests {
     fn zero_height() {
         let bytes = vec![0u8];
         let mut img = Img::new_stride(bytes,1,0,1);
+        assert_eq!(0, img.rows().count());
         let _ = img.sub_image(1,0,0,0);
         let _ = img.sub_image_mut(0,0,1,0);
     }
@@ -559,6 +587,7 @@ mod tests {
         for _ in vec.as_ref().buf().iter() {}
         for _ in vec {}
     }
+
     #[test]
     fn sub() {
         let img = Img::new_stride(vec![1,2,3,4,
@@ -607,23 +636,33 @@ mod tests {
 
     #[test]
     fn mut_pixels() {
-        let mut img = ImgVec::new_stride(vec![0u8; 10000], 10, 15, 100);
-        assert_eq!(10*15, img.pixels_mut().count());
-        assert_eq!(10*15, img.as_mut().pixels().count());
-        assert_eq!(10*15, img.as_mut().pixels_mut().count());
-        assert_eq!(10*15, img.as_mut().as_ref().pixels().count());
+        for y in 1..15 {
+            for x in 1..10 {
+                let mut img = ImgVec::new_stride(vec![0u8; 10000], x, y, 100);
+                assert_eq!(x*y, img.pixels_mut().count());
+                assert_eq!(x*y, img.as_mut().pixels().count());
+                assert_eq!(x*y, img.as_mut().pixels_mut().count());
+                assert_eq!(x*y, img.as_mut().as_ref().pixels().count());
+            }
+        }
     }
 
     #[test]
     fn into_contiguous_buf() {
-        let img = ImgVec::new_stride((0..10000).map(|x| x as u8).collect(), 121, 39, 166);
-        let pixels: Vec<_> = img.pixels().collect();
-        let (buf, w, h) = img.into_contiguous_buf();
-        assert_eq!(pixels, buf);
-        assert_eq!(121*39, buf.len());
-        assert_eq!(10000, buf.capacity());
-        assert_eq!(121, w);
-        assert_eq!(39, h);
+        for in_h in [1, 2, 3, 38, 39, 40, 41].iter().copied() {
+            for in_w in [1, 2, 3, 120, 121].iter().copied() {
+                for stride in [in_w, 121, 122, 166, 242, 243].iter().copied() {
+                    let img = ImgVec::new_stride((0..10000).map(|x| x as u8).collect(), in_w, in_h, stride);
+                    let pixels: Vec<_> = img.pixels().collect();
+                    let (buf, w, h) = img.into_contiguous_buf();
+                    assert_eq!(pixels, buf);
+                    assert_eq!(in_w*in_h, buf.len());
+                    assert_eq!(10000, buf.capacity());
+                    assert_eq!(in_w, w);
+                    assert_eq!(in_h, h);
+                }
+            }
+        }
 
         let img = ImgVec::new((0..55*33).map(|x| x as u8).collect(), 55, 33);
         let pixels: Vec<_> = img.pixels().collect();
