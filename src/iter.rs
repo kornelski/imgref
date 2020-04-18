@@ -147,6 +147,7 @@ impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
         let width = img.width();
         let stride = img.stride();
+        assert!(width > 0);
         debug_assert!(img.buf().len() + stride >= stride * img.height() + width);
         Self {
             current: img.buf().as_ptr(),
@@ -199,6 +200,7 @@ impl<'a, T: Copy + 'a> PixelsIterMut<'a, T> {
     pub(crate) fn new(img: &mut super::ImgRefMut<'a, T>) -> Self {
         let width = img.width();
         let stride = img.stride();
+        assert!(width > 0);
         debug_assert!(!img.buf().is_empty() && img.buf().len() + stride >= stride * img.height() + width);
         Self {
             current: img.buf_mut().as_mut_ptr(),
@@ -245,18 +247,26 @@ fn iter() {
         for height in 1..8 {
             for pad in 0..3 {
                 let img = super::Img::new_stride(&buf[..], width, height, width + pad);
-                assert_eq!(width * height, img.pixels().count());
+                assert_eq!(width * height, img.pixels().map(|a| a as usize).sum(), "{}x{}", width, height);
+                assert_eq!(width * height, img.pixels().count(), "{}x{}", width, height);
                 assert_eq!(height, img.rows().count());
-                assert_eq!(width * height, img.pixels().map(|a| a as usize).sum());
 
                 let mut iter1 = img.pixels();
-                iter1.next();
-                assert_eq!(width * height - 1, iter1.filter(|_| true).count());
+                match iter1.next() {
+                    Some(_) => assert_eq!(width * height - 1, iter1.filter(|_| true).count()),
+                    None => assert_eq!(width * height, 0),
+                };
 
                 let mut iter2 = img.rows();
-                iter2.next();
-                assert_eq!(height - 1, iter2.size_hint().0);
-                assert_eq!(height - 1, iter2.filter(|_| true).count());
+                match iter2.next() {
+                    Some(_) => {
+                        assert_eq!(height - 1, iter2.size_hint().0);
+                        assert_eq!(height - 1, iter2.filter(|_| true).count());
+                    },
+                    None => {
+                        assert_eq!(height, 0);
+                    },
+                };
             }
         }
     }
