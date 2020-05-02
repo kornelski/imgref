@@ -19,6 +19,7 @@
 //! It is assumed that the container is [one element per pixel](https://crates.io/crates/rgb/), e.g. `Vec<RGBA>`,
 //! and _not_ a `Vec<u8>` where 4 `u8` elements are interpreted as one pixel.
 //!
+use std::borrow::Cow;
 use std::slice;
 
 mod ops;
@@ -267,6 +268,29 @@ impl<'a, T> ImgRef<'a, T> {
     }
 }
 
+impl<'a, T: Clone> ImgRef<'a, T> {
+    /// Returns a reference to the buffer, width, height. Guarantees that the buffer is contiguous,
+    /// i.e. it's `width*height` elements long, and `[x + y*width]` addresses each pixel.
+    ///
+    /// It will create a copy if the buffer isn't contiguous (width != stride).
+    /// For a more efficient version, see `into_contiguous_buf()`
+    #[allow(deprecated)]
+    #[must_use]
+    pub fn to_contiguous_buf(&self) -> (Cow<[T]>, usize, usize) {
+        let width = self.width();
+        let height = self.height();
+        let stride = self.stride();
+        if width == stride {
+            return (Cow::Borrowed(&self.buf), width, height)
+        }
+        let mut buf = Vec::with_capacity(width*height);
+        for row in self.rows() {
+            buf.extend_from_slice(row);
+        }
+        (Cow::Owned(buf), width, height)
+    }
+}
+
 impl<'a, T> ImgRefMut<'a, T> {
     /// Turn this into immutable reference, and slice a subregion of it
     #[inline]
@@ -495,13 +519,24 @@ impl<Container> Img<Container> {
 }
 
 impl<T: Copy> Img<Vec<T>> {
-    /// Returns buffer, width, height. Guarantees that the buffer is contiguous,
+    /// Returns the buffer, width, height. Guarantees that the buffer is contiguous,
     /// i.e. it's `width*height` elements long, and `[x + y*width]` addresses each pixel.
     ///
     /// Efficiently performs operation in-place. For other containers use `pixels().collect()`.
     #[allow(deprecated)]
     #[must_use]
     pub fn into_contiguous_buf(mut self) -> (Vec<T>, usize, usize) {
+        let (_, w, h) = self.as_contiguous_buf();
+        (self.buf, w, h)
+    }
+
+    /// Returns a reference to the buffer, width, height. Guarantees that the buffer is contiguous,
+    /// i.e. it's `width*height` elements long, and `[x + y*width]` addresses each pixel.
+    ///
+    /// Efficiently performs operation in-place. For other containers use `pixels().collect()`.
+    #[allow(deprecated)]
+    #[must_use]
+    pub fn as_contiguous_buf(&mut self) -> (&[T], usize, usize) {
         let width = self.width();
         let height = self.height();
         let stride = self.stride();
@@ -514,7 +549,7 @@ impl<T: Copy> Img<Vec<T>> {
             }
         }
         self.buf.truncate(width * height);
-        (self.buf, width, height)
+        (&mut self.buf, width, height)
     }
 }
 
@@ -666,6 +701,9 @@ mod tests {
 
         let img = ImgVec::new((0..55*33).map(|x| x as u8).collect(), 55, 33);
         let pixels: Vec<_> = img.pixels().collect();
+        let tmp = img.as_ref();
+        let (buf, ..) = tmp.to_contiguous_buf();
+        assert_eq!(&pixels[..], &buf[..]);
         let (buf, ..) = img.into_contiguous_buf();
         assert_eq!(pixels, buf);
     }
