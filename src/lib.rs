@@ -22,6 +22,8 @@
 use std::borrow::Cow;
 use std::slice;
 
+mod traits;
+
 mod ops;
 pub use ops::*;
 
@@ -92,7 +94,7 @@ pub trait ImgExtMut<Pixel> {
 /// Basic struct used for both owned (alias `ImgVec`) and borrowed (alias `ImgRef`) image fragments.
 ///
 /// Note: the fields are `pub` only because of borrow checker limitations. Please consider them as read-only.
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone)]
 pub struct Img<Container> {
     /// Storage for the pixels. Usually `Vec<Pixel>` or `&[Pixel]`. See `ImgVec` and `ImgRef`.
     ///
