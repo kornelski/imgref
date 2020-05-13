@@ -28,61 +28,61 @@ impl<T: Hash> Hash for ImgVec<T> {
     }
 }
 
-impl<'a, T: PartialEq> PartialEq for ImgRef<'a, T> {
+impl<'a, 'b, T, U> PartialEq<ImgRef<'b, U>> for ImgRef<'a, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline]
-    fn eq(&self, other: &ImgRef<T>) -> bool {
+    fn eq(&self, other: &ImgRef<'b, U>) -> bool {
         self.width == other.width &&
         self.height == other.height &&
         self.rows().zip(other.rows()).all(|(a,b)| a == b)
     }
 }
 
-impl<'a, T: PartialEq> PartialEq for ImgRefMut<'a, T> {
+impl<'a, 'b, T, U> PartialEq<ImgRefMut<'b, U>> for ImgRefMut<'a, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline]
-    fn eq(&self, other: &ImgRefMut<T>) -> bool {
+    fn eq(&self, other: &ImgRefMut<'b, U>) -> bool {
         self.as_ref().eq(&other.as_ref())
     }
 }
 
 
-impl<T: PartialEq> PartialEq for ImgVec<T> {
+impl<T, U> PartialEq<ImgVec<U>> for ImgVec<T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline(always)]
-    fn eq(&self, other: &ImgVec<T>) -> bool {
+    fn eq(&self, other: &ImgVec<U>) -> bool {
         self.as_ref().eq(&other.as_ref())
     }
 }
 
-impl<'a, T: PartialEq> PartialEq<ImgRef<'a, T>> for ImgVec<T> {
+impl<'a, T, U> PartialEq<ImgRef<'a, U>> for ImgVec<T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline(always)]
-    fn eq(&self, other: &ImgRef<'a, T>) -> bool {
+    fn eq(&self, other: &ImgRef<'a, U>) -> bool {
         self.as_ref().eq(other)
     }
 }
 
-impl<'a, T: PartialEq> PartialEq<ImgVec<T>> for ImgRef<'a, T> {
+impl<'a, T, U> PartialEq<ImgVec<U>> for ImgRef<'a, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline(always)]
-    fn eq(&self, other: &ImgVec<T>) -> bool {
+    fn eq(&self, other: &ImgVec<U>) -> bool {
         self.eq(&other.as_ref())
     }
 }
 
-impl<'a, 'b, T: PartialEq> PartialEq<ImgRef<'a, T>> for ImgRefMut<'b, T> {
+impl<'a, 'b, T, U> PartialEq<ImgRef<'b, U>> for ImgRefMut<'a, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline(always)]
-    fn eq(&self, other: &ImgRef<'a, T>) -> bool {
+    fn eq(&self, other: &ImgRef<'b, U>) -> bool {
         self.as_ref().eq(other)
     }
 }
 
-impl<'a, 'b, T: PartialEq> PartialEq<ImgRefMut<'b, T>> for ImgRef<'a, T> {
+impl<'a, 'b, T, U> PartialEq<ImgRefMut<'b, U>> for ImgRef<'a, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline(always)]
-    fn eq(&self, other: &ImgRefMut<'b, T>) -> bool {
+    fn eq(&self, other: &ImgRefMut<'b, U>) -> bool {
         self.eq(&other.as_ref())
     }
 }
@@ -98,11 +98,19 @@ impl<T: Eq> Eq for ImgVec<T> {
 
 #[test]
 fn test_eq_hash() {
+    #[derive(Debug)]
+    struct Comparable(u16);
+    impl PartialEq<u8> for Comparable {
+        fn eq(&self, other: &u8) -> bool { self.0 == *other as u16 }
+    }
+
+    let newtype = ImgVec::new(vec![Comparable(0), Comparable(1), Comparable(2), Comparable(3)], 2, 2);
     let mut img1 = ImgVec::new(vec![0u8, 1, 2, 3], 2, 2);
     let img_ne = ImgVec::new(vec![0u8, 1, 2, 3], 4, 1);
     let img2 = ImgVec::new_stride(vec![0u8, 1, 255, 2, 3, 255], 2, 2, 3);
     let mut img3 = ImgVec::new_stride(vec![0u8, 1, 255, 2, 3], 2, 2, 3);
 
+    assert_eq!(newtype, img1);
     equiv(&img1, &img2);
     equiv(&img2, &img3);
     equiv(&img1, &img3);
