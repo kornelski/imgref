@@ -8,8 +8,8 @@ use std::slice;
 #[derive(Debug)]
 #[must_use]
 pub struct RowsIter<'a, T> {
-    pub(crate) width: usize,
     pub(crate) inner: slice::Chunks<'a, T>,
+    pub(crate) width: usize,
 }
 
 impl<'a, T: 'a> Iterator for RowsIter<'a, T> {
@@ -54,7 +54,12 @@ impl<'a, T: 'a> Iterator for RowsIter<'a, T> {
     }
 }
 
-impl<'a, T> ExactSizeIterator for RowsIter<'a, T> {}
+impl<'a, T> ExactSizeIterator for RowsIter<'a, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 impl<'a, T> FusedIterator for RowsIter<'a, T> {}
 
