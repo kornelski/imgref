@@ -19,6 +19,36 @@
 //! It is assumed that the container is [one element per pixel](https://crates.io/crates/rgb/), e.g. `Vec<RGBA>`,
 //! and _not_ a `Vec<u8>` where 4 `u8` elements are interpreted as one pixel.
 //!
+//!
+//!  ```rust
+//!  use imgref::*;
+//!  # fn some_image_processing_function(img: ImgRef<u8>) -> ImgVec<u8> { img.new_buf(img.buf().to_vec()) }
+//!
+//!  fn main() {
+//!      let img = Img::new(vec![0; 1000], 50, 20); // 1000 pixels of a 50×20 image
+//!
+//!      let new_image = some_image_processing_function(img.as_ref()); // Use imgvec.as_ref() instead of &imgvec for better efficiency
+//!
+//!      println!("New size is {}×{}", new_image.width(), new_image.height());
+//!      println!("And the top left pixel is {:?}", new_image[(0u32,0u32)]);
+//!
+//!      let first_row_slice = &new_image[0];
+//!
+//!      for row in new_image.rows() {
+//!          // …
+//!      }
+//!      for px in new_image.pixels() {
+//!          // …
+//!      }
+//!
+//!      // slice (x, y, width, height) by reference - no copy!
+//!      let fragment = img.sub_image(5, 5, 15, 15);
+//!
+//!      //
+//!      let (vec, width, height) = fragment.to_contiguous_buf();
+//!  }
+//!  ```
+
 use std::borrow::Cow;
 use std::slice;
 

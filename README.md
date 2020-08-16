@@ -21,8 +21,10 @@ fn main() {
 
     let new_image = some_image_processing_function(img.as_ref()); // Use imgvec.as_ref() instead of &imgvec for better efficiency
 
-    println("New size is {}×{}", new_image.width(), new_image.height());
-    println("And the top left pixel is {:?}", new_image[(0,0)]);
+    println!("New size is {}×{}", new_image.width(), new_image.height());
+    println!("And the top left pixel is {:?}", new_image[(0u32,0u32)]);
+
+    let first_row_slice = &new_image[0];
 
     for row in new_image.rows() {
         …
@@ -30,6 +32,13 @@ fn main() {
     for px in new_image.pixels() {
         …
     }
+
+    // slice (x, y, width, height) by reference - no copy!
+    let fragment = img.sub_image(5, 5, 15, 15);
+
+    // create a vec of pixels without stride, for compatibility with software
+    // that expects pixels without any "gaps"
+    let (vec, width, height) = fragment.to_contiguous_buf();
 }
 ```
 

@@ -59,3 +59,58 @@ fn index() {
     assert_eq!(8, img[(1usize,2usize)]);
     assert_eq!(5, img.sub_image_mut(1,1,1,1)[(0usize,0usize)]);
 }
+
+
+macro_rules! impl_imgref_row_index {
+    ($container:ty) => {
+        impl<'a, Pixel: Copy> ops::Index<usize> for Img<$container> {
+            type Output = [Pixel];
+            #[inline(always)]
+            /// Take n-th row as a slice. Same as .rows().nth(n).unwrap()
+            ///
+            /// Slice length is guaranteed to equal image width.
+            /// Row must be within image height.
+            fn index(&self, row: usize) -> &Self::Output {
+                let stride = self.stride();
+                let width = self.width();
+                let start = row * stride;
+                &self.buf()[start .. start + width]
+            }
+        }
+    };
+}
+
+macro_rules! impl_imgref_row_index_mut {
+    ($container:ty) => {
+        impl<'a, Pixel: Copy> ops::IndexMut<usize> for Img<$container> {
+            #[inline(always)]
+            /// Take n-th row as a mutable slice. Same as .rows().nth(n).unwrap()
+            ///
+            /// Slice length is guaranteed to equal image width.
+            /// Row must be within image height.
+            fn index_mut(&mut self, row: usize) -> &mut Self::Output {
+                let stride = self.stride();
+                let width = self.width();
+                let start = row * stride;
+                &mut self.buf_mut()[start .. start + width]
+            }
+        }
+    };
+}
+
+impl_imgref_row_index! {&'a [Pixel]}
+impl_imgref_row_index! {&'a mut [Pixel]}
+impl_imgref_row_index_mut! {&'a mut [Pixel]}
+impl_imgref_row_index! {Vec<Pixel>}
+impl_imgref_row_index_mut! {Vec<Pixel>}
+
+#[test]
+fn index_by_row() {
+    let mut img = Img::new_stride(vec![1,2,3,4,5,6,7,8], 2, 2, 3);
+    assert_eq!(&[1,2], &img[0]);
+    assert_eq!(&[4,5], &img[1]);
+    assert_eq!(&[1,2], &img.as_ref()[0]);
+    assert_eq!(&[4,5], &img.as_ref()[1]);
+    assert_eq!(&[1,2], &img.as_mut()[0]);
+    assert_eq!(&[4,5], &img.as_mut()[1]);
+}
