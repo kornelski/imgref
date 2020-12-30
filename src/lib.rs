@@ -433,10 +433,11 @@ impl<'a, T> ImgRefMut<'a, T> {
     }
 }
 
-#[deprecated(note = "use .rows() or .pixels() iterators which are more predictable")]
+/// Deprecated. Use .rows() or .pixels() iterators which are more predictable
 impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
     type Item = Container::Item;
     type IntoIter = Container::IntoIter;
+    /// Deprecated. Use .rows() or .pixels() iterators which are more predictable
     fn into_iter(self) -> Container::IntoIter {
         self.into_buf().into_iter()
     }
