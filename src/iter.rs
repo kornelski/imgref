@@ -1,3 +1,4 @@
+use core::num::NonZeroUsize;
 use core::iter::FusedIterator;
 use std::marker::PhantomData;
 use std::slice;
@@ -142,7 +143,7 @@ pub struct PixelsIter<'a, T: Copy> {
     current: *const T,
     current_line_end: *const T,
     rows_left: usize,
-    width: usize,
+    width: NonZeroUsize,
     pad: usize,
     _dat: PhantomData<&'a [T]>,
 }
@@ -150,16 +151,15 @@ pub struct PixelsIter<'a, T: Copy> {
 impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
     #[inline]
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
-        let width = img.width();
+        let width = NonZeroUsize::new(img.width()).expect("width > 0");
         let stride = img.stride();
-        assert!(width > 0);
-        debug_assert!(img.buf().len() + stride >= stride * img.height() + width);
+        debug_assert!(img.buf().len() + stride >= stride * img.height() + width.get());
         Self {
             current: img.buf().as_ptr(),
-            current_line_end: img.buf()[width..].as_ptr(),
+            current_line_end: img.buf()[width.get()..].as_ptr(),
             width,
             rows_left: img.height(),
-            pad: stride - width,
+            pad: stride - width.get(),
             _dat: PhantomData,
         }
     }
@@ -177,7 +177,7 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
                 }
                 self.rows_left -= 1;
                 self.current = self.current_line_end.add(self.pad);
-                self.current_line_end = self.current.add(self.width);
+                self.current_line_end = self.current.add(self.width.get());
             }
             let px = *self.current;
             self.current = self.current.add(1);
@@ -195,7 +195,7 @@ pub struct PixelsIterMut<'a, T: Copy> {
     current: *mut T,
     current_line_end: *mut T,
     y: usize,
-    width: usize,
+    width: NonZeroUsize,
     pad: usize,
     _dat: PhantomData<&'a mut [T]>,
 }
@@ -203,16 +203,15 @@ pub struct PixelsIterMut<'a, T: Copy> {
 impl<'a, T: Copy + 'a> PixelsIterMut<'a, T> {
     #[inline]
     pub(crate) fn new(img: &mut super::ImgRefMut<'a, T>) -> Self {
-        let width = img.width();
+        let width = NonZeroUsize::new(img.width()).expect("width > 0");
         let stride = img.stride();
-        assert!(width > 0);
-        debug_assert!(!img.buf().is_empty() && img.buf().len() + stride >= stride * img.height() + width);
+        debug_assert!(!img.buf().is_empty() && img.buf().len() + stride >= stride * img.height() + width.get());
         Self {
             current: img.buf_mut().as_mut_ptr(),
-            current_line_end: img.buf_mut()[width..].as_mut_ptr(),
+            current_line_end: img.buf_mut()[width.get()..].as_mut_ptr(),
             width,
             y: img.height(),
-            pad: stride - width,
+            pad: stride - width.get(),
             _dat: PhantomData,
         }
     }
@@ -230,7 +229,7 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIterMut<'a, T> {
                     return None;
                 }
                 self.current = self.current_line_end.add(self.pad);
-                self.current_line_end = self.current.add(self.width);
+                self.current_line_end = self.current.add(self.width.get());
             }
             let px = &mut *self.current;
             self.current = self.current.add(1);
