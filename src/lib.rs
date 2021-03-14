@@ -105,6 +105,9 @@ pub trait ImgExt<Pixel> {
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
     fn rows_padded(&self) -> slice::Chunks<'_, Pixel>;
+
+    /// Borrow the container
+    fn as_ref(&self) -> ImgRef<Pixel>;
 }
 
 /// Additional methods that depend on buffer size
@@ -119,6 +122,9 @@ pub trait ImgExtMut<Pixel> {
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
     fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel>;
+
+    /// Borrow the container mutably
+    fn as_mut(&mut self) -> ImgRefMut<Pixel>;
 }
 
 /// Basic struct used for both owned (alias `ImgVec`) and borrowed (alias `ImgRef`) image fragments.
@@ -226,6 +232,17 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
     fn rows_padded(&self) -> slice::Chunks<'_, Pixel> {
         self.buf().as_ref().chunks(self.stride())
     }
+
+    #[inline(always)]
+    #[allow(deprecated)]
+    fn as_ref(&self) -> ImgRef<Pixel> {
+        Img {
+            buf: self.buf.as_ref(),
+            width: self.width,
+            height: self.height,
+            stride: self.stride,
+        }
+    }
 }
 
 impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut<[Pixel]> {
@@ -241,6 +258,17 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
     fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel> {
         let stride = self.stride();
         self.buf_mut().as_mut().chunks_mut(stride)
+    }
+
+    #[inline(always)]
+    #[allow(deprecated)]
+    fn as_mut(&mut self) -> ImgRefMut<Pixel> {
+        Img {
+            buf: self.buf.as_mut(),
+            width: self.width,
+            height: self.height,
+            stride: self.stride,
+        }
     }
 }
 
@@ -593,6 +621,79 @@ impl<OldContainer> Img<OldContainer> {
         where NewContainer: AsRef<[NewPixel]>, OldContainer: AsRef<[OldPixel]> {
         assert_eq!(self.buf().as_ref().len(), new_buf.as_ref().len());
         Img::new_stride(new_buf, self.width(), self.height(), self.stride())
+    }
+}
+
+impl<T: Clone> From<Img<Cow<'_, [T]>>> for Img<Vec<T>> {
+    #[allow(deprecated)]
+    fn from(img: Img<Cow<'_, [T]>>) -> Self {
+        Img {
+            width: img.width,
+            height: img.height,
+            stride: img.stride,
+            buf: img.buf.into_owned(),
+        }
+    }
+}
+
+impl<T: Clone> From<ImgVec<T>> for Img<Cow<'static, [T]>> {
+    #[allow(deprecated)]
+    fn from(img: ImgVec<T>) -> Self {
+        Img {
+            width: img.width,
+            height: img.height,
+            stride: img.stride,
+            buf: img.buf.into(),
+        }
+    }
+}
+
+impl<'a, T: Clone> From<ImgRef<'a, T>> for Img<Cow<'a, [T]>> {
+    #[allow(deprecated)]
+    fn from(img: ImgRef<'a, T>) -> Self {
+        Img {
+            buf: img.buf.into(),
+            width: img.width,
+            height: img.height,
+            stride: img.stride,
+        }
+    }
+}
+
+impl<T: Clone> Img<Cow<'_, [T]>> {
+    /// Convert underlying buffer to owned (e.g. slice to vec)
+    ///
+    /// See also `to_contiguous_buf().0.into_owned()`
+    #[allow(deprecated)]
+    pub fn into_owned(self) -> ImgVec<T> {
+        match self.buf {
+            Cow::Borrowed(_) => {
+                let tmp = self.as_ref();
+                let (buf, w, h) = tmp.to_contiguous_buf();
+                ImgVec::new(buf.into_owned(), w, h)
+            },
+            Cow::Owned(buf) => Img {
+                buf,
+                width: self.width,
+                height: self.height,
+                stride: self.stride,
+            },
+        }
+    }
+}
+
+impl<T> Img<T> where T: ToOwned {
+    /// Convert underlying buffer to owned (e.g. slice to vec)
+    ///
+    /// See also `to_contiguous_buf().0.into_owned()`
+    #[allow(deprecated)]
+    pub fn to_owned(&self) -> Img<T::Owned> {
+        Img {
+            buf: self.buf.to_owned(),
+            width: self.width,
+            height: self.height,
+            stride: self.stride,
+        }
     }
 }
 
