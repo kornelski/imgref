@@ -383,6 +383,8 @@ impl<'a, T> ImgRefMut<'a, T> {
 }
 
 impl<'a, T: Copy> ImgRef<'a, T> {
+    /// Iterate `width*height` pixels in the `Img`, ignoring padding area
+    ///
     /// # Panics
     ///
     /// if width is 0
@@ -390,6 +392,19 @@ impl<'a, T: Copy> ImgRef<'a, T> {
     #[must_use]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(*self)
+    }
+}
+
+impl<'a, T> ImgRef<'a, T> {
+    /// Iterate `width*height` pixels in the `Img`, by reference, ignoring padding area
+    ///
+    /// # Panics
+    ///
+    /// if width is 0
+    #[inline]
+    #[must_use]
+    pub fn pixels_ref(&self) -> PixelsRefIter<'_, T> {
+        PixelsRefIter::new(*self)
     }
 }
 

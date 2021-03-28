@@ -137,9 +137,38 @@ impl<'a, T: 'a> DoubleEndedIterator for RowsIterMut<'a, T> {
 /// Iterates over pixels in the (sub)image. Call `Img.pixels()` to create it.
 ///
 /// Ignores padding, if there's any.
-#[derive(Debug)]
 #[must_use]
 pub struct PixelsIter<'a, T: Copy> {
+    inner: PixelsRefIter<'a, T>
+}
+
+impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
+    #[inline(always)]
+    pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
+        Self {
+            inner: PixelsRefIter::new(img)
+        }
+    }
+}
+
+impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
+    type Item = T;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.inner.next() {
+            Some(x) => Some(*x),
+            None => None,
+        }
+    }
+}
+
+/// Iterates over pixels in the (sub)image. Call `Img.pixels_ref()` to create it.
+///
+/// Ignores padding, if there's any.
+#[derive(Debug)]
+#[must_use]
+pub struct PixelsRefIter<'a, T> {
     current: *const T,
     current_line_end: *const T,
     rows_left: usize,
@@ -148,7 +177,7 @@ pub struct PixelsIter<'a, T: Copy> {
     _dat: PhantomData<&'a [T]>,
 }
 
-impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
+impl<'a, T: 'a> PixelsRefIter<'a, T> {
     #[inline]
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
         let width = NonZeroUsize::new(img.width()).expect("width > 0");
@@ -165,8 +194,8 @@ impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
     }
 }
 
-impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
-    type Item = T;
+impl<'a, T: 'a> Iterator for PixelsRefIter<'a, T> {
+    type Item = &'a T;
 
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
@@ -179,7 +208,7 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
                 self.current = self.current_line_end.add(self.pad);
                 self.current_line_end = self.current.add(self.width.get());
             }
-            let px = *self.current;
+            let px = &*self.current;
             self.current = self.current.add(1);
             Some(px)
         }
