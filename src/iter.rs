@@ -156,10 +156,7 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
 
     #[inline(always)]
     fn next(&mut self) -> Option<Self::Item> {
-        match self.inner.next() {
-            Some(x) => Some(*x),
-            None => None,
-        }
+        self.inner.next().copied()
     }
 }
 
@@ -181,14 +178,19 @@ impl<'a, T: 'a> PixelsRefIter<'a, T> {
     #[inline]
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
         let width = NonZeroUsize::new(img.width()).expect("width > 0");
+        let height = img.height();
         let stride = img.stride();
-        debug_assert!(img.buf().len() + stride >= stride * img.height() + width.get());
+        assert!(stride >= width.get());
+        let pad = stride - width.get();
+        debug_assert!(img.buf().len() + stride >= stride * height + width.get(),
+            "buffer len {} is less than {} (({}+{})x{})", img.buf().len(),
+            stride * height - pad, width, pad, height);
         Self {
             current: img.buf().as_ptr(),
             current_line_end: img.buf()[width.get()..].as_ptr(),
             width,
-            rows_left: img.height(),
-            pad: stride - width.get(),
+            rows_left: height,
+            pad,
             _dat: PhantomData,
         }
     }
@@ -279,7 +281,8 @@ fn iter() {
     for width in 1..16 {
         for height in 1..8 {
             for pad in 0..3 {
-                let img = super::Img::new_stride(&buf[..], width, height, width + pad);
+                let stride = width + pad;
+                let img = super::Img::new_stride(&buf[..stride * height + stride - width], width, height, stride);
                 assert_eq!(width * height, img.pixels().map(|a| a as usize).sum(), "{}x{}", width, height);
                 assert_eq!(width * height, img.pixels().count(), "{}x{}", width, height);
                 assert_eq!(height, img.rows().count());

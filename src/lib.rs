@@ -307,7 +307,6 @@ impl<'a, T> ImgRef<'a, T> {
     }
 
     #[inline]
-    #[must_use]
     /// Iterate over whole rows of pixels as slices
     ///
     /// # Panics
@@ -341,7 +340,7 @@ impl<'a, T: Clone> ImgRef<'a, T> {
         let height = self.height();
         let stride = self.stride();
         if width == stride {
-            return (Cow::Borrowed(&self.buf), width, height)
+            return (Cow::Borrowed(self.buf), width, height)
         }
         let mut buf = Vec::with_capacity(width*height);
         for row in self.rows() {
@@ -389,7 +388,6 @@ impl<'a, T: Copy> ImgRef<'a, T> {
     ///
     /// if width is 0
     #[inline]
-    #[must_use]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(*self)
     }
@@ -402,7 +400,6 @@ impl<'a, T> ImgRef<'a, T> {
     ///
     /// if width is 0
     #[inline]
-    #[must_use]
     pub fn pixels_ref(&self) -> PixelsRefIter<'_, T> {
         PixelsRefIter::new(*self)
     }
@@ -413,7 +410,6 @@ impl<'a, T: Copy> ImgRefMut<'a, T> {
     ///
     /// if width is 0
     #[inline]
-    #[must_use]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
@@ -422,7 +418,6 @@ impl<'a, T: Copy> ImgRefMut<'a, T> {
     ///
     /// if width is 0
     #[inline]
-    #[must_use]
     pub fn pixels_mut(&mut self) -> PixelsIterMut<'_, T> {
         PixelsIterMut::new(self)
     }
@@ -433,7 +428,6 @@ impl<'a, T: Copy> ImgVec<T> {
     ///
     /// if width is 0
     #[inline]
-    #[must_use]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
@@ -442,7 +436,6 @@ impl<'a, T: Copy> ImgVec<T> {
     ///
     /// if width is 0
     #[inline]
-    #[must_use]
     pub fn pixels_mut(&mut self) -> PixelsIterMut<'_, T> {
         PixelsIterMut::new(&mut self.as_mut())
     }
@@ -453,7 +446,6 @@ impl<'a, T> ImgRefMut<'a, T> {
     ///
     /// if stride is 0
     #[inline]
-    #[must_use]
     pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf_internal(&self.buf()[..])
     }
@@ -462,7 +454,6 @@ impl<'a, T> ImgRefMut<'a, T> {
     ///
     /// if stride is 0
     #[inline]
-    #[must_use]
     #[allow(deprecated)]
     pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
@@ -539,7 +530,6 @@ impl<T> ImgVec<T> {
     ///
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     #[inline]
-    #[must_use]
     pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf_internal(self.buf())
     }
@@ -548,7 +538,6 @@ impl<T> ImgVec<T> {
     ///
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     #[inline]
-    #[must_use]
     #[allow(deprecated)]
     pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
