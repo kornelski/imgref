@@ -621,6 +621,20 @@ impl<T: Copy> Img<Vec<T>> {
 impl<OldContainer> Img<OldContainer> {
     /// A convenience method for creating an image of the same size and stride, but with a new buffer.
     #[inline]
+    pub fn map_buf<NewContainer, OldPixel, NewPixel, F>(self, callback: F) -> Img<NewContainer>
+        where NewContainer: AsRef<[NewPixel]>, OldContainer: AsRef<[OldPixel]>, F: FnOnce(OldContainer) -> NewContainer {
+        let width = self.width();
+        let height = self.height();
+        let stride = self.stride();
+        let old_buf_len = self.buf().as_ref().len();
+        #[allow(deprecated)]
+        let new_buf = callback(self.buf);
+        assert_eq!(old_buf_len, new_buf.as_ref().len());
+        Img::new_stride(new_buf, width, height, stride)
+    }
+
+    /// A convenience method for creating an image of the same size and stride, but with a new buffer.
+    #[inline]
     pub fn new_buf<NewContainer, OldPixel, NewPixel>(&self, new_buf: NewContainer) -> Img<NewContainer>
         where NewContainer: AsRef<[NewPixel]>, OldContainer: AsRef<[OldPixel]> {
         assert_eq!(self.buf().as_ref().len(), new_buf.as_ref().len());
@@ -825,7 +839,8 @@ mod tests {
         for in_h in [1, 2, 3, 38, 39, 40, 41].iter().copied() {
             for in_w in [1, 2, 3, 120, 121].iter().copied() {
                 for stride in [in_w, 121, 122, 166, 242, 243].iter().copied() {
-                    let img = ImgVec::new_stride((0..10000).map(|x| x as u8).collect(), in_w, in_h, stride);
+                    let img = ImgVec::new_stride((0..10000).map(|x| x as u8).collect(), in_w, in_h, stride)
+                        .map_buf(|x| x);
                     let pixels: Vec<_> = img.pixels().collect();
                     let (buf, w, h) = img.into_contiguous_buf();
                     assert_eq!(pixels, buf);

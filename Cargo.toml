@@ -13,7 +13,7 @@ version = "1.9.1"
 edition = "2018"
 
 [badges]
-travis-ci = { repository = "kornelski/imgref" }
+maintenance = { status = "actively-developed" }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
