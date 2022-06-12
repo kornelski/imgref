@@ -606,11 +606,8 @@ impl<T: Copy> Img<Vec<T>> {
         let height = self.height();
         let stride = self.stride();
         if width != stride {
-            unsafe {
-                let buf = self.buf.as_mut_ptr();
-                for row in 1..height {
-                    std::ptr::copy(buf.add(row * stride), buf.add(row * width), width);
-                }
+            for row in 1..height {
+                self.buf.copy_within(row * stride .. row * stride + width, row * width);
             }
         }
         self.buf.truncate(width * height);
