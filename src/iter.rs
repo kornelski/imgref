@@ -174,6 +174,9 @@ pub struct PixelsRefIter<'a, T> {
     _dat: PhantomData<&'a [T]>,
 }
 
+unsafe impl<T> Send for PixelsRefIter<'_, T> where T: Send {}
+unsafe impl<T> Sync for PixelsRefIter<'_, T> where T: Sync {}
+
 impl<'a, T: 'a> PixelsRefIter<'a, T> {
     #[inline]
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
@@ -222,7 +225,7 @@ impl<'a, T: 'a> Iterator for PixelsRefIter<'a, T> {
 /// Ignores padding, if there's any.
 #[derive(Debug)]
 #[must_use]
-pub struct PixelsIterMut<'a, T: Copy> {
+pub struct PixelsIterMut<'a, T> {
     current: *mut T,
     current_line_end: *mut T,
     y: usize,
@@ -231,7 +234,10 @@ pub struct PixelsIterMut<'a, T: Copy> {
     _dat: PhantomData<&'a mut [T]>,
 }
 
-impl<'a, T: Copy + 'a> PixelsIterMut<'a, T> {
+unsafe impl<T> Send for PixelsIterMut<'_, T> where T: Send {}
+unsafe impl<T> Sync for PixelsIterMut<'_, T> where T: Sync {}
+
+impl<'a, T: 'a> PixelsIterMut<'a, T> {
     #[inline]
     pub(crate) fn new(img: &mut super::ImgRefMut<'a, T>) -> Self {
         let width = NonZeroUsize::new(img.width()).expect("width > 0");
@@ -248,7 +254,7 @@ impl<'a, T: Copy + 'a> PixelsIterMut<'a, T> {
     }
 }
 
-impl<'a, T: Copy + 'a> Iterator for PixelsIterMut<'a, T> {
+impl<'a, T: 'a> Iterator for PixelsIterMut<'a, T> {
     type Item = &'a mut T;
 
     #[inline(always)]

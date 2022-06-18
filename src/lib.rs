@@ -384,6 +384,8 @@ impl<'a, T> ImgRefMut<'a, T> {
 impl<'a, T: Copy> ImgRef<'a, T> {
     /// Iterate `width*height` pixels in the `Img`, ignoring padding area
     ///
+    /// If you want to iterate in parallel, parallelize `rows()` instead.
+    ///
     /// # Panics
     ///
     /// if width is 0
@@ -395,6 +397,8 @@ impl<'a, T: Copy> ImgRef<'a, T> {
 
 impl<'a, T> ImgRef<'a, T> {
     /// Iterate `width*height` pixels in the `Img`, by reference, ignoring padding area
+    ///
+    /// If you want to iterate in parallel, parallelize `rows()` instead.
     ///
     /// # Panics
     ///
@@ -408,12 +412,15 @@ impl<'a, T> ImgRef<'a, T> {
 impl<'a, T: Copy> ImgRefMut<'a, T> {
     /// # Panics
     ///
+    /// If you want to iterate in parallel, parallelize `rows()` instead.
+    ///
     /// if width is 0
     #[inline]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
 
+    /// If you want to iterate in parallel, parallelize `rows()` instead.
     /// # Panics
     ///
     /// if width is 0
@@ -424,6 +431,7 @@ impl<'a, T: Copy> ImgRefMut<'a, T> {
 }
 
 impl<'a, T: Copy> ImgVec<T> {
+    /// If you want to iterate in parallel, parallelize `rows()` instead.
     /// # Panics
     ///
     /// if width is 0
@@ -432,6 +440,7 @@ impl<'a, T: Copy> ImgVec<T> {
         PixelsIter::new(self.as_ref())
     }
 
+    /// If you want to iterate in parallel, parallelize `rows()` instead.
     /// # Panics
     ///
     /// if width is 0
@@ -442,6 +451,8 @@ impl<'a, T: Copy> ImgVec<T> {
 }
 
 impl<'a, T> ImgRefMut<'a, T> {
+    /// Iterate over whole rows as slices
+    ///
     /// # Panics
     ///
     /// if stride is 0
@@ -450,6 +461,8 @@ impl<'a, T> ImgRefMut<'a, T> {
         self.rows_buf_internal(&self.buf()[..])
     }
 
+    /// Iterate over whole rows as slices
+    ///
     /// # Panics
     ///
     /// if stride is 0
@@ -529,6 +542,8 @@ impl<T> ImgVec<T> {
     /// Iterate over rows of the image as slices
     ///
     /// Each slice is guaranteed to be exactly `width` pixels wide.
+    ///
+    /// This iterator is a good candidate for parallelization (e.g. rayon's `par_bridge()`)
     #[inline]
     pub fn rows(&self) -> RowsIter<'_, T> {
         self.rows_buf_internal(self.buf())
@@ -537,6 +552,8 @@ impl<T> ImgVec<T> {
     /// Iterate over rows of the image as mutable slices
     ///
     /// Each slice is guaranteed to be exactly `width` pixels wide.
+    ///
+    /// This iterator is a good candidate for parallelization (e.g. rayon's `par_bridge()`)
     #[inline]
     #[allow(deprecated)]
     pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
