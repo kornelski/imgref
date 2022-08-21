@@ -335,7 +335,7 @@ impl<'a, T: Clone> ImgRef<'a, T> {
     /// For a more efficient version, see `into_contiguous_buf()`
     #[allow(deprecated)]
     #[must_use]
-    pub fn to_contiguous_buf(&self) -> (Cow<[T]>, usize, usize) {
+    pub fn to_contiguous_buf(&self) -> (Cow<'a, [T]>, usize, usize) {
         let width = self.width();
         let height = self.height();
         let stride = self.stride();
