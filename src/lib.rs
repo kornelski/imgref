@@ -430,7 +430,7 @@ impl<'a, T: Copy> ImgRefMut<'a, T> {
     }
 }
 
-impl<'a, T: Copy> ImgVec<T> {
+impl<T: Copy> ImgVec<T> {
     /// If you want to iterate in parallel, parallelize `rows()` instead.
     /// # Panics
     ///
