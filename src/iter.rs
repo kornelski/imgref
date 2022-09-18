@@ -160,6 +160,13 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
     }
 }
 
+impl<'a, T: Copy> ExactSizeIterator for PixelsIter<'a, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
 /// Iterates over pixels in the (sub)image. Call `Img.pixels_ref()` to create it.
 ///
 /// Ignores padding, if there's any.
@@ -218,6 +225,19 @@ impl<'a, T: 'a> Iterator for PixelsRefIter<'a, T> {
             Some(px)
         }
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let this_line = unsafe {
+            self.current_line_end.offset_from(self.current)
+        };
+        debug_assert!(this_line >= 0);
+        let len = this_line as usize + (self.rows_left - 1) * self.width.get();
+        (len, Some(len))
+    }
+}
+
+impl<'a, T: Copy> ExactSizeIterator for PixelsRefIter<'a, T> {
 }
 
 /// Iterates over pixels in the (sub)image. Call `Img.pixels_mut()` to create it.
@@ -294,10 +314,13 @@ fn iter() {
                 assert_eq!(height, img.rows().count());
 
                 let mut iter1 = img.pixels();
-                match iter1.next() {
-                    Some(_) => assert_eq!(width * height - 1, iter1.filter(|_| true).count()),
-                    None => assert_eq!(width * height, 0),
-                };
+                let mut left = width * height;
+                while let Some(_px) = iter1.next() {
+                    left -= 1;
+                    assert_eq!(left, iter1.len());
+                }
+                assert_eq!(0, iter1.len()); iter1.next();
+                assert_eq!(0, iter1.len());
 
                 let mut iter2 = img.rows();
                 match iter2.next() {
