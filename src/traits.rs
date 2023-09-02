@@ -1,5 +1,5 @@
-use std::hash::{Hasher, Hash};
-use crate::{ImgRef, ImgVec, ImgRefMut};
+use crate::{ImgRef, ImgRefMut, ImgVec};
+use core::hash::{Hash, Hasher};
 
 impl<'a, T: Hash> Hash for ImgRef<'a, T> {
     #[allow(deprecated)]
@@ -98,6 +98,8 @@ impl<T: Eq> Eq for ImgVec<T> {
 
 #[test]
 fn test_eq_hash() {
+    use alloc::vec;
+
     #[derive(Debug)]
     struct Comparable(u16);
     impl PartialEq<u8> for Comparable {
