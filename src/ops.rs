@@ -1,5 +1,9 @@
 use super::Img;
-use std::ops;
+use alloc::vec::Vec;
+use core::ops;
+
+#[cfg(test)]
+use alloc::vec;
 
 macro_rules! impl_imgref_index {
     ($container:ty, $index:ty) => {

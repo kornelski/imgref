@@ -1,7 +1,10 @@
-use core::num::NonZeroUsize;
 use core::iter::FusedIterator;
-use std::marker::PhantomData;
-use std::slice;
+use core::marker::PhantomData;
+use core::num::NonZeroUsize;
+use core::slice;
+
+#[cfg(test)]
+use alloc::vec;
 
 /// Rows of the image. Call `Img.rows()` to create it.
 ///

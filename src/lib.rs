@@ -49,8 +49,15 @@
 //!  }
 //!  ```
 
-use std::borrow::Cow;
-use std::slice;
+#![no_std]
+
+extern crate alloc;
+#[cfg(test)]
+extern crate std;
+
+use alloc::borrow::{Cow, ToOwned};
+use alloc::vec::Vec;
+use core::slice;
 
 mod traits;
 
@@ -322,7 +329,7 @@ impl<'a, T> ImgRef<'a, T> {
     ///
     /// Note: it iterates **all** pixels in the underlying buffer, not just limited by width/height.
     #[deprecated(note = "Size of this buffer is unpredictable. Use .rows() instead")]
-    pub fn iter(&self) -> std::slice::Iter<'_, T> {
+    pub fn iter(&self) -> slice::Iter<'_, T> {
         self.buf().iter()
     }
 }
@@ -535,7 +542,7 @@ impl<T> ImgVec<T> {
     }
 
     #[deprecated(note = "Size of this buffer may be unpredictable. Use .rows() instead")]
-    pub fn iter(&self) -> std::slice::Iter<'_, T> {
+    pub fn iter(&self) -> slice::Iter<'_, T> {
         self.buf().iter()
     }
 
@@ -732,6 +739,7 @@ impl<T> Img<T> where T: ToOwned {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
 
     mod with_opinionated_container {
         use super::*;
