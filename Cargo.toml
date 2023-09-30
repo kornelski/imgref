@@ -1,7 +1,7 @@
 [package]
 authors = ["Kornel Lesiński <kornel@geekhood.net>"]
 categories = ["rust-patterns", "multimedia::images"]
-description = "A trivial struct for interchange of 2d-dimensional pixel buffers with width, height & stride"
+description = "A basic 2-dimensional slice for safe and convenient handling of pixel buffers with width, height & stride"
 documentation = "https://docs.rs/imgref/"
 homepage = "https://lib.rs/crates/imgref"
 keywords = ["interoperability", "stride", "image", "frame", "vec2d"]
@@ -9,11 +9,16 @@ license = "CC0-1.0 OR Apache-2.0"
 name = "imgref"
 readme = "README.md"
 repository = "https://github.com/kornelski/imgref"
-version = "1.9.4"
-edition = "2018"
+version = "1.10.0"
+edition = "2021"
+
+[features]
+default = ["deprecated"]
+deprecated = []
 
 [badges]
 maintenance = { status = "actively-developed" }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
+rustdoc-args = ["--generate-link-to-definition"]
