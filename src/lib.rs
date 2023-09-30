@@ -98,6 +98,7 @@ pub trait ImgExt<Pixel> {
     /// # Panics
     ///
     /// This method may panic if the underlying buffer is not at least `height()*stride()` pixels large.
+    #[cfg(feature = "deprecated")]
     fn width_padded(&self) -> usize;
 
     /// Height in number of full strides.
@@ -106,11 +107,13 @@ pub trait ImgExt<Pixel> {
     /// # Panics
     ///
     /// This method may panic if the underlying buffer is not at least `height()*stride()` pixels large.
+    #[cfg(feature = "deprecated")]
     fn height_padded(&self) -> usize;
 
     /// Iterate over the entire buffer as rows, including all padding
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
+    #[cfg(feature = "deprecated")]
     fn rows_padded(&self) -> slice::Chunks<'_, Pixel>;
 
     /// Borrow the container
@@ -128,6 +131,7 @@ pub trait ImgExtMut<Pixel> {
     /// Iterate over the entire buffer as rows, including all padding
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
+    #[cfg(feature = "deprecated")]
     fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel>;
 
     /// Borrow the container mutably
@@ -143,21 +147,39 @@ pub struct Img<Container> {
     ///
     /// Note that future version will make this field private. Use `.rows()` and `.pixels()` iterators where possible, or `buf()`/`buf_mut()`/`into_buf()`.
     #[deprecated(note = "Don't access struct fields directly. Use buf(), buf_mut() or into_buf()")]
+    #[cfg(feature = "deprecated")]
     pub buf: Container,
+
+    #[cfg(not(feature = "deprecated"))]
+    buf: Container,
 
     /// Number of pixels to skip in the container to advance to the next row.
     ///
     /// Note: pixels between `width` and `stride` may not be usable, and may not even exist in the last row.
     #[deprecated(note = "Don't access struct fields directly. Use stride()")]
+    #[cfg(feature = "deprecated")]
     pub stride: usize,
+
+    #[cfg(not(feature = "deprecated"))]
+    stride: usize,
+
     /// Width of the image in pixels.
     ///
     /// Note that this isn't same as the width of the row in the `buf`, see `stride`
     #[deprecated(note = "Don't access struct fields directly. Use width()")]
+    #[cfg(feature = "deprecated")]
     pub width: u32,
+
+    #[cfg(not(feature = "deprecated"))]
+    width: u32,
+
     /// Height of the image in pixels.
     #[deprecated(note = "Don't access struct fields directly. Use height()")]
+    #[cfg(feature = "deprecated")]
     pub height: u32,
+
+    #[cfg(not(feature = "deprecated"))]
+    height: u32,
 }
 
 impl<Container> Img<Container> {
@@ -181,14 +203,14 @@ impl<Container> Img<Container> {
     #[allow(deprecated)]
     pub fn stride(&self) -> usize {self.stride}
 
-    /// Immutable reference to the pixel storage. Warning: exposes stride. Use `pixels()` or `rows()` insetad.
+    /// Immutable reference to the pixel storage. Warning: exposes stride. Use `pixels()` or `rows()` instead.
     ///
     /// See also `into_contiguous_buf()`.
     #[inline(always)]
     #[allow(deprecated)]
     pub fn buf(&self) -> &Container {&self.buf}
 
-    /// Mutable reference to the pixel storage. Warning: exposes stride. Use `pixels_mut()` or `rows_mut()` insetad.
+    /// Mutable reference to the pixel storage. Warning: exposes stride. Use `pixels_mut()` or `rows_mut()` instead.
     ///
     /// See also `into_contiguous_buf()`.
     #[inline(always)]
@@ -201,6 +223,8 @@ impl<Container> Img<Container> {
     pub fn into_buf(self) -> Container {self.buf}
 
     #[deprecated(note = "this was meant to be private, use new_buf() and/or rows()")]
+    #[cfg(feature = "deprecated")]
+    #[doc(hidden)]
     pub fn rows_buf<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
         self.rows_buf_internal(buf)
     }
@@ -221,11 +245,13 @@ impl<Container> Img<Container> {
 
 impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[Pixel]> {
     #[inline(always)]
+    #[cfg(feature = "deprecated")]
     fn width_padded(&self) -> usize {
         self.stride()
     }
 
     #[inline(always)]
+    #[cfg(feature = "deprecated")]
     fn height_padded(&self) -> usize {
         let len = self.buf().as_ref().len();
         assert_eq!(0, len % self.stride());
@@ -236,6 +262,7 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
     ///
     /// Rows will have up to `stride` width, but the last row may be shorter.
     #[inline(always)]
+    #[cfg(feature = "deprecated")]
     fn rows_padded(&self) -> slice::Chunks<'_, Pixel> {
         self.buf().as_ref().chunks(self.stride())
     }
@@ -262,6 +289,7 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
     /// If stride is 0
     #[inline]
     #[must_use]
+    #[cfg(feature = "deprecated")]
     fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel> {
         let stride = self.stride();
         self.buf_mut().as_mut().chunks_mut(stride)
@@ -329,6 +357,8 @@ impl<'a, T> ImgRef<'a, T> {
     ///
     /// Note: it iterates **all** pixels in the underlying buffer, not just limited by width/height.
     #[deprecated(note = "Size of this buffer is unpredictable. Use .rows() instead")]
+    #[cfg(feature = "deprecated")]
+    #[doc(hidden)]
     pub fn iter(&self) -> slice::Iter<'_, T> {
         self.buf().iter()
     }
@@ -488,6 +518,7 @@ impl<'a, T> ImgRefMut<'a, T> {
 }
 
 /// Deprecated. Use .rows() or .pixels() iterators which are more predictable
+#[cfg(feature = "deprecated")]
 impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
     type Item = Container::Item;
     type IntoIter = Container::IntoIter;
@@ -542,6 +573,8 @@ impl<T> ImgVec<T> {
     }
 
     #[deprecated(note = "Size of this buffer may be unpredictable. Use .rows() instead")]
+    #[cfg(feature = "deprecated")]
+    #[doc(hidden)]
     pub fn iter(&self) -> slice::Iter<'_, T> {
         self.buf().iter()
     }
@@ -791,9 +824,14 @@ mod tests {
         let bytes = vec![0u8;20];
         let _ = Img::new_stride(bytes.as_slice(), 10,2,10);
         let vec = ImgVec::new_stride(bytes, 10,2,10);
+
+        #[cfg(feature = "deprecated")]
         for _ in vec.iter() {}
+
         assert_eq!(2, vec.rows().count());
         for _ in vec.as_ref().buf().iter() {}
+
+        #[cfg(feature = "deprecated")]
         for _ in vec {}
     }
 
