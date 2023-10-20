@@ -1,17 +1,15 @@
-# 2D slice of a `Vec`
+# 2D slice of a an image
 
-This is a lowest common denominator struct for working with image fragments in Rust code. It represents a 2-dimensional vector and rectangular slices of it.
+This is a minimal struct that represents a 2-dimensional vector and rectangular slices of it. It's intended for describing image data, and regions of images (AKA bitmap descriptors, frames with a pitch or stride, planes). It's useful when working with image data, and can be used as the common struct for exchanging image pixels between crates.
 
 * [API Reference](https://docs.rs/imgref)
 * [Installation](https://crates.io/crates/imgref)
 
-In graphics code it's very common to pass `width` and `height` along with a `Vec` of pixels — all as separate arguments. This gets very repetitive, and can lead to errors.
+In graphics code it's very common to pass `width` and `height` along with a `Vec` or a slice of pixels — all as separate arguments. This gets very repetitive, and can lead to errors.
 
-This crate is a simple struct that adds dimensions to the underlying buffer. This makes it easier to correctly keep track of the image size and allows passing images with just one function argument instead three or four.
+Additionally, some graphics code requires use of `stride`, which allows defining sub-regions of images without copying. This is useful for slicing and tiling, and to support bitmaps that require padding (e.g. in video formats that round frame sizes to a multiple of a block size).
 
-Additionally, it has a concept of a `stride`, which allows defining sub-regions of images without copying, as well as padding (e.g. buffers for video frames may require to be a multiple of 8, regardless of logical image size).
-
-For convenience, it implements iterators for pixels/rows and indexing with `img[(x,y)]`.
+This crate is a simple struct that adds dimensions to the underlying pixel buffer. This makes it easier to correctly keep track of the image size and allows passing images with just one function argument instead three or four. For convenience, it also implements efficient iterators for pixels/rows and indexing with `img[(x,y)]`.
 
 ```rust
 use imgref::*;
