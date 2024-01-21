@@ -62,8 +62,6 @@ use core::slice;
 mod traits;
 
 mod ops;
-pub use ops::*;
-
 mod iter;
 pub use iter::*;
 
@@ -230,6 +228,7 @@ impl<Container> Img<Container> {
     }
 
     #[inline]
+    #[track_caller]
     fn rows_buf_internal<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
         let stride = self.stride();
         debug_assert!(self.width() <= self.stride());
@@ -333,6 +332,7 @@ impl<'a, T> ImgRef<'a, T> {
     /// (left + width must be <= container width, etc.)
     #[inline]
     #[must_use]
+    #[track_caller]
     pub fn sub_image(&self, left: usize, top: usize, width: usize, height: usize) -> Self {
         assert!(top + height <= self.height());
         assert!(left + width <= self.width());
@@ -402,6 +402,7 @@ impl<'a, T> ImgRefMut<'a, T> {
     #[inline]
     #[allow(deprecated)]
     #[must_use]
+    #[track_caller]
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
@@ -532,6 +533,7 @@ impl<T> ImgVec<T> {
     /// Create a mutable view into a region within the image. See `sub_image()` for read-only views.
     #[allow(deprecated)]
     #[must_use]
+    #[track_caller]
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
@@ -616,6 +618,7 @@ impl<Container> Img<Container> {
     /// The `Container` is usually a `Vec` or a slice.
     #[inline]
     #[allow(deprecated)]
+    #[track_caller]
     pub fn new_stride(buf: Container, width: usize, height: usize, stride: usize) -> Self {
         assert!(stride > 0);
         assert!(stride >= width as usize);
@@ -675,6 +678,7 @@ impl<T: Copy> Img<Vec<T>> {
 impl<OldContainer> Img<OldContainer> {
     /// A convenience method for creating an image of the same size and stride, but with a new buffer.
     #[inline]
+    #[track_caller]
     pub fn map_buf<NewContainer, OldPixel, NewPixel, F>(self, callback: F) -> Img<NewContainer>
         where NewContainer: AsRef<[NewPixel]>, OldContainer: AsRef<[OldPixel]>, F: FnOnce(OldContainer) -> NewContainer {
         let width = self.width();
@@ -689,6 +693,7 @@ impl<OldContainer> Img<OldContainer> {
 
     /// A convenience method for creating an image of the same size and stride, but with a new buffer.
     #[inline]
+    #[track_caller]
     pub fn new_buf<NewContainer, OldPixel, NewPixel>(&self, new_buf: NewContainer) -> Img<NewContainer>
         where NewContainer: AsRef<[NewPixel]>, OldContainer: AsRef<[OldPixel]> {
         assert_eq!(self.buf().as_ref().len(), new_buf.as_ref().len());
