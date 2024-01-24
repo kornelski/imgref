@@ -147,6 +147,7 @@ pub struct PixelsIter<'a, T: Copy> {
 
 impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
     #[inline(always)]
+    #[track_caller]
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
         Self {
             inner: PixelsRefIter::new(img)
@@ -189,6 +190,7 @@ unsafe impl<T> Sync for PixelsRefIter<'_, T> where T: Sync {}
 
 impl<'a, T: 'a> PixelsRefIter<'a, T> {
     #[inline]
+    #[track_caller]
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
         let width = NonZeroUsize::new(img.width()).expect("width > 0");
         let height = img.height();

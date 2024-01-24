@@ -428,6 +428,7 @@ impl<'a, T: Copy> ImgRef<'a, T> {
     ///
     /// if width is 0
     #[inline]
+    #[track_caller]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(*self)
     }
