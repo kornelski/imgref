@@ -349,7 +349,7 @@ impl<'a, T> ImgRef<'a, T> {
     /// If stride is 0
     ///
     /// See also `pixels()`
-    pub fn rows(&self) -> RowsIter<'_, T> {
+    pub fn rows(&self) -> RowsIter<'a, T> {
         self.rows_buf_internal(self.buf())
     }
 
