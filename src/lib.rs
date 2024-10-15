@@ -76,12 +76,12 @@ pub type ImgVec<Pixel> = Img<Vec<Pixel>>;
 /// Pass this structure by value (i.e. `ImgRef`, not `&ImgRef`).
 ///
 /// Only `width` of pixels of every `stride` can be modified. The `buf` may be longer than `height`*`stride`, but the extra space should be ignored.
-pub type ImgRef<'a, Pixel> = Img<&'a [Pixel]>;
+pub type ImgRef<'slice, Pixel> = Img<&'slice [Pixel]>;
 
 /// Same as `ImgRef`, but mutable
 /// Pass this structure by value (i.e. `ImgRef`, not `&ImgRef`).
 ///
-pub type ImgRefMut<'a, Pixel> = Img<&'a mut [Pixel]>;
+pub type ImgRefMut<'slice, Pixel> = Img<&'slice mut [Pixel]>;
 
 /// Additional methods that depend on buffer size
 ///
@@ -223,13 +223,13 @@ impl<Container> Img<Container> {
     #[deprecated(note = "this was meant to be private, use new_buf() and/or rows()")]
     #[cfg(feature = "deprecated")]
     #[doc(hidden)]
-    pub fn rows_buf<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
+    pub fn rows_buf<'buf, T: 'buf>(&self, buf: &'buf [T]) -> RowsIter<'buf, T> {
         self.rows_buf_internal(buf)
     }
 
     #[inline]
     #[track_caller]
-    fn rows_buf_internal<'a, T: 'a>(&self, buf: &'a [T]) -> RowsIter<'a, T> {
+    fn rows_buf_internal<'buf, T: 'buf>(&self, buf: &'buf [T]) -> RowsIter<'buf, T> {
         let stride = self.stride();
         debug_assert!(self.width() <= self.stride());
         debug_assert!(buf.len() >= self.width() * self.height());
@@ -323,7 +323,7 @@ fn sub_image(left: usize, top: usize, width: usize, height: usize, stride: usize
     (start, end, stride)
 }
 
-impl<'a, T> ImgRef<'a, T> {
+impl<'slice, T> ImgRef<'slice, T> {
     /// Make a reference for a part of the image, without copying any pixels.
     ///
     /// # Panics
@@ -349,7 +349,7 @@ impl<'a, T> ImgRef<'a, T> {
     /// If stride is 0
     ///
     /// See also `pixels()`
-    pub fn rows(&self) -> RowsIter<'a, T> {
+    pub fn rows(&self) -> RowsIter<'slice, T> {
         self.rows_buf_internal(self.buf())
     }
 
@@ -359,7 +359,7 @@ impl<'a, T> ImgRef<'a, T> {
     #[deprecated(note = "Size of this buffer is unpredictable. Use .rows() instead")]
     #[cfg(feature = "deprecated")]
     #[doc(hidden)]
-    pub fn iter(&self) -> slice::Iter<'_, T> {
+    pub fn iter(&self) -> slice::Iter<'slice, T> {
         self.buf().iter()
     }
 }
@@ -387,12 +387,12 @@ impl<'a, T: Clone> ImgRef<'a, T> {
     }
 }
 
-impl<'a, T> ImgRefMut<'a, T> {
+impl<'slice, T> ImgRefMut<'slice, T> {
     /// Turn this into immutable reference, and slice a subregion of it
     #[inline]
     #[allow(deprecated)]
     #[must_use]
-    pub fn sub_image(&'a mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRef<'a, T> {
+    pub fn sub_image(&'slice self, left: usize, top: usize, width: usize, height: usize) -> ImgRef<'slice, T> {
         self.as_ref().sub_image(left, top, width, height)
     }
 
@@ -419,7 +419,7 @@ impl<'a, T> ImgRefMut<'a, T> {
     }
 }
 
-impl<'a, T: Copy> ImgRef<'a, T> {
+impl<'slice, T: Copy> ImgRef<'slice, T> {
     /// Iterate `width*height` pixels in the `Img`, ignoring padding area
     ///
     /// If you want to iterate in parallel, parallelize `rows()` instead.
@@ -429,12 +429,12 @@ impl<'a, T: Copy> ImgRef<'a, T> {
     /// if width is 0
     #[inline]
     #[track_caller]
-    pub fn pixels(&self) -> PixelsIter<'_, T> {
+    pub fn pixels(&self) -> PixelsIter<'slice, T> {
         PixelsIter::new(*self)
     }
 }
 
-impl<'a, T> ImgRef<'a, T> {
+impl<'slice, T> ImgRef<'slice, T> {
     /// Iterate `width*height` pixels in the `Img`, by reference, ignoring padding area
     ///
     /// If you want to iterate in parallel, parallelize `rows()` instead.
@@ -443,12 +443,12 @@ impl<'a, T> ImgRef<'a, T> {
     ///
     /// if width is 0
     #[inline]
-    pub fn pixels_ref(&self) -> PixelsRefIter<'_, T> {
+    pub fn pixels_ref(&self) -> PixelsRefIter<'slice, T> {
         PixelsRefIter::new(*self)
     }
 }
 
-impl<'a, T: Copy> ImgRefMut<'a, T> {
+impl<T: Copy> ImgRefMut<'_, T> {
     /// # Panics
     ///
     /// If you want to iterate in parallel, parallelize `rows()` instead.
@@ -489,7 +489,7 @@ impl<T: Copy> ImgVec<T> {
     }
 }
 
-impl<'a, T> ImgRefMut<'a, T> {
+impl<T> ImgRefMut<'_, T> {
     /// Iterate over whole rows as slices
     ///
     /// # Panics
