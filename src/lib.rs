@@ -186,12 +186,12 @@ impl<Container> Img<Container> {
     /// Note that this isn't same as the width of the row in image data, see `stride()`
     #[inline(always)]
     #[allow(deprecated)]
-    pub fn width(&self) -> usize {self.width as usize}
+    pub const fn width(&self) -> usize { self.width as usize }
 
     /// Height of the image in pixels.
     #[inline(always)]
     #[allow(deprecated)]
-    pub fn height(&self) -> usize {self.height as usize}
+    pub const fn height(&self) -> usize { self.height as usize }
 
     /// Number of _pixels_ to skip in the container to advance to the next row.
     ///
@@ -199,26 +199,26 @@ impl<Container> Img<Container> {
     /// Some APIs use number of *bytes* for a stride. You may need to multiply this one by number of pixels.
     #[inline(always)]
     #[allow(deprecated)]
-    pub fn stride(&self) -> usize {self.stride}
+    pub const fn stride(&self) -> usize { self.stride }
 
     /// Immutable reference to the pixel storage. Warning: exposes stride. Use `pixels()` or `rows()` instead.
     ///
     /// See also `into_contiguous_buf()`.
     #[inline(always)]
     #[allow(deprecated)]
-    pub fn buf(&self) -> &Container {&self.buf}
+    pub const fn buf(&self) -> &Container { &self.buf }
 
     /// Mutable reference to the pixel storage. Warning: exposes stride. Use `pixels_mut()` or `rows_mut()` instead.
     ///
     /// See also `into_contiguous_buf()`.
     #[inline(always)]
     #[allow(deprecated)]
-    pub fn buf_mut(&mut self) -> &mut Container {&mut self.buf}
+    pub fn buf_mut(&mut self) -> &mut Container { &mut self.buf }
 
     /// Get the pixel storage by consuming the image. Be careful about stride — see `into_contiguous_buf()` for a safe version.
     #[inline(always)]
     #[allow(deprecated)]
-    pub fn into_buf(self) -> Container {self.buf}
+    pub fn into_buf(self) -> Container { self.buf }
 
     #[deprecated(note = "this was meant to be private, use new_buf() and/or rows()")]
     #[cfg(feature = "deprecated")]
@@ -539,7 +539,7 @@ impl<T> ImgVec<T> {
         assert!(top+height <= self.height());
         assert!(left+width <= self.width());
         let start = self.stride * top + left;
-        let min_buf_size = if self.height > 0 {self.stride * height + width - self.stride} else {0};
+        let min_buf_size = if self.height > 0 { self.stride * height + width - self.stride } else {0};
         let buf = &mut self.buf[start .. start + min_buf_size];
         Img::new_stride(buf, width, height, self.stride)
     }
