@@ -58,14 +58,14 @@ impl<'a, T: 'a> Iterator for RowsIter<'a, T> {
     }
 }
 
-impl<'a, T> ExactSizeIterator for RowsIter<'a, T> {
+impl<T> ExactSizeIterator for RowsIter<'_, T> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
-impl<'a, T> FusedIterator for RowsIter<'a, T> {}
+impl<T> FusedIterator for RowsIter<'_, T> {}
 
 impl<'a, T: 'a> DoubleEndedIterator for RowsIter<'a, T> {
     #[inline]
@@ -123,8 +123,8 @@ impl<'a, T: 'a> Iterator for RowsIterMut<'a, T> {
     }
 }
 
-impl<'a, T> ExactSizeIterator for RowsIterMut<'a, T> {}
-impl<'a, T> FusedIterator for RowsIterMut<'a, T> {}
+impl<T> ExactSizeIterator for RowsIterMut<'_, T> {}
+impl<T> FusedIterator for RowsIterMut<'_, T> {}
 
 impl<'a, T: 'a> DoubleEndedIterator for RowsIterMut<'a, T> {
     #[inline]
@@ -164,7 +164,7 @@ impl<'a, T: Copy + 'a> Iterator for PixelsIter<'a, T> {
     }
 }
 
-impl<'a, T: Copy> ExactSizeIterator for PixelsIter<'a, T> {
+impl<T: Copy> ExactSizeIterator for PixelsIter<'_, T> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
@@ -243,7 +243,7 @@ impl<'a, T: 'a> Iterator for PixelsRefIter<'a, T> {
     }
 }
 
-impl<'a, T: Copy> ExactSizeIterator for PixelsRefIter<'a, T> {
+impl<T: Copy> ExactSizeIterator for PixelsRefIter<'_, T> {
 }
 
 /// Iterates over pixels in the (sub)image. Call `Img.pixels_mut()` to create it.
@@ -310,14 +310,14 @@ fn iter() {
     assert_eq!(Some(2), it.next());
     assert_eq!(None, it.next());
 
-    let buf = vec![1u8; (16 + 3) * (8 + 1)];
+    let buf = [1u8; (16 + 3) * (8 + 1)];
     for width in 1..16 {
         for height in 1..8 {
             for pad in 0..3 {
                 let stride = width + pad;
                 let img = super::Img::new_stride(&buf[..stride * height + stride - width], width, height, stride);
-                assert_eq!(width * height, img.pixels().map(|a| a as usize).sum(), "{}x{}", width, height);
-                assert_eq!(width * height, img.pixels().count(), "{}x{}", width, height);
+                assert_eq!(width * height, img.pixels().map(|a| a as usize).sum(), "{width}x{height}");
+                assert_eq!(width * height, img.pixels().count(), "{width}x{height}");
                 assert_eq!(height, img.rows().count());
 
                 let mut iter1 = img.pixels();

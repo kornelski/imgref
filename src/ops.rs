@@ -72,7 +72,7 @@ macro_rules! impl_imgref_row_index {
         impl<'a, Pixel: Copy> ops::Index<usize> for Img<$container> {
             type Output = [Pixel];
             #[inline(always)]
-            /// Take n-th row as a slice. Same as .rows().nth(n).unwrap()
+            /// Take n-th row as a slice. Same as `.rows().nth(n).unwrap()`
             ///
             /// Slice length is guaranteed to equal image width.
             /// Row must be within image height.
@@ -90,7 +90,7 @@ macro_rules! impl_imgref_row_index_mut {
     ($container:ty) => {
         impl<'a, Pixel: Copy> ops::IndexMut<usize> for Img<$container> {
             #[inline(always)]
-            /// Take n-th row as a mutable slice. Same as .rows().nth(n).unwrap()
+            /// Take n-th row as a mutable slice. Same as `.rows().nth(n).unwrap()`
             ///
             /// Slice length is guaranteed to equal image width.
             /// Row must be within image height.

@@ -519,12 +519,12 @@ impl<'a, T> ImgRefMut<'a, T> {
     }
 }
 
-/// Deprecated. Use .rows() or .pixels() iterators which are more predictable
+/// Deprecated. Use .`rows()` or .`pixels()` iterators which are more predictable
 #[cfg(feature = "deprecated")]
 impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
     type Item = Container::Item;
     type IntoIter = Container::IntoIter;
-    /// Deprecated. Use .rows() or .pixels() iterators which are more predictable
+    /// Deprecated. Use .`rows()` or .`pixels()` iterators which are more predictable
     fn into_iter(self) -> Container::IntoIter {
         self.into_buf().into_iter()
     }
@@ -622,10 +622,10 @@ impl<Container> Img<Container> {
     #[track_caller]
     pub fn new_stride(buf: Container, width: usize, height: usize, stride: usize) -> Self {
         assert!(stride > 0);
-        assert!(stride >= width as usize);
-        debug_assert!(height < <u32>::max_value() as usize);
-        debug_assert!(width < <u32>::max_value() as usize);
-        Img {
+        assert!(stride >= width);
+        debug_assert!(height < u32::MAX as usize);
+        debug_assert!(width < u32::MAX as usize);
+        Self {
             buf,
             width: width as u32,
             height: height as u32,
@@ -705,7 +705,7 @@ impl<OldContainer> Img<OldContainer> {
 impl<T: Clone> From<Img<Cow<'_, [T]>>> for Img<Vec<T>> {
     #[allow(deprecated)]
     fn from(img: Img<Cow<'_, [T]>>) -> Self {
-        Img {
+        Self {
             width: img.width,
             height: img.height,
             stride: img.stride,
@@ -743,6 +743,7 @@ impl<T: Clone> Img<Cow<'_, [T]>> {
     ///
     /// See also `to_contiguous_buf().0.into_owned()`
     #[allow(deprecated)]
+    #[must_use]
     pub fn into_owned(self) -> ImgVec<T> {
         match self.buf {
             Cow::Borrowed(_) => {
@@ -835,7 +836,7 @@ mod tests {
         for _ in vec.iter() {}
 
         assert_eq!(2, vec.rows().count());
-        for _ in vec.as_ref().buf().iter() {}
+        for _ in *vec.as_ref().buf() {}
 
         #[cfg(feature = "deprecated")]
         for _ in vec {}

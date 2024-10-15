@@ -1,7 +1,7 @@
 use crate::{ImgRef, ImgRefMut, ImgVec};
 use core::hash::{Hash, Hasher};
 
-impl<'a, T: Hash> Hash for ImgRef<'a, T> {
+impl<T: Hash> Hash for ImgRef<'_, T> {
     #[allow(deprecated)]
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -13,7 +13,7 @@ impl<'a, T: Hash> Hash for ImgRef<'a, T> {
     }
 }
 
-impl<'a, T: Hash> Hash for ImgRefMut<'a, T> {
+impl<T: Hash> Hash for ImgRefMut<'_, T> {
     #[allow(deprecated)]
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -28,7 +28,7 @@ impl<T: Hash> Hash for ImgVec<T> {
     }
 }
 
-impl<'a, 'b, T, U> PartialEq<ImgRef<'b, U>> for ImgRef<'a, T> where T: PartialEq<U> {
+impl<'b, T, U> PartialEq<ImgRef<'b, U>> for ImgRef<'_, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline]
     fn eq(&self, other: &ImgRef<'b, U>) -> bool {
@@ -38,7 +38,7 @@ impl<'a, 'b, T, U> PartialEq<ImgRef<'b, U>> for ImgRef<'a, T> where T: PartialEq
     }
 }
 
-impl<'a, 'b, T, U> PartialEq<ImgRefMut<'b, U>> for ImgRefMut<'a, T> where T: PartialEq<U> {
+impl<'b, T, U> PartialEq<ImgRefMut<'b, U>> for ImgRefMut<'_, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline]
     fn eq(&self, other: &ImgRefMut<'b, U>) -> bool {
@@ -63,7 +63,7 @@ impl<'a, T, U> PartialEq<ImgRef<'a, U>> for ImgVec<T> where T: PartialEq<U> {
     }
 }
 
-impl<'a, T, U> PartialEq<ImgVec<U>> for ImgRef<'a, T> where T: PartialEq<U> {
+impl<T, U> PartialEq<ImgVec<U>> for ImgRef<'_, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline(always)]
     fn eq(&self, other: &ImgVec<U>) -> bool {
@@ -71,7 +71,7 @@ impl<'a, T, U> PartialEq<ImgVec<U>> for ImgRef<'a, T> where T: PartialEq<U> {
     }
 }
 
-impl<'a, 'b, T, U> PartialEq<ImgRef<'b, U>> for ImgRefMut<'a, T> where T: PartialEq<U> {
+impl<'b, T, U> PartialEq<ImgRef<'b, U>> for ImgRefMut<'_, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline(always)]
     fn eq(&self, other: &ImgRef<'b, U>) -> bool {
@@ -79,7 +79,7 @@ impl<'a, 'b, T, U> PartialEq<ImgRef<'b, U>> for ImgRefMut<'a, T> where T: Partia
     }
 }
 
-impl<'a, 'b, T, U> PartialEq<ImgRefMut<'b, U>> for ImgRef<'a, T> where T: PartialEq<U> {
+impl<'b, T, U> PartialEq<ImgRefMut<'b, U>> for ImgRef<'_, T> where T: PartialEq<U> {
     #[allow(deprecated)]
     #[inline(always)]
     fn eq(&self, other: &ImgRefMut<'b, U>) -> bool {
@@ -87,10 +87,10 @@ impl<'a, 'b, T, U> PartialEq<ImgRefMut<'b, U>> for ImgRef<'a, T> where T: Partia
     }
 }
 
-impl<'a, T: Eq> Eq for ImgRefMut<'a, T> {
+impl<T: Eq> Eq for ImgRefMut<'_, T> {
 }
 
-impl<'a, T: Eq> Eq for ImgRef<'a, T> {
+impl<T: Eq> Eq for ImgRef<'_, T> {
 }
 
 impl<T: Eq> Eq for ImgVec<T> {
@@ -103,7 +103,7 @@ fn test_eq_hash() {
     #[derive(Debug)]
     struct Comparable(u16);
     impl PartialEq<u8> for Comparable {
-        fn eq(&self, other: &u8) -> bool { self.0 == *other as u16 }
+        fn eq(&self, other: &u8) -> bool { self.0 == u16::from(*other) }
     }
 
     let newtype = ImgVec::new(vec![Comparable(0), Comparable(1), Comparable(2), Comparable(3)], 2, 2);
