@@ -232,6 +232,7 @@ impl<'a, T: 'a> Iterator for PixelsRefIter<'a, T> {
     }
 
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let this_line = unsafe {
             self.current_line_end.offset_from(self.current)
@@ -264,6 +265,7 @@ unsafe impl<T> Sync for PixelsIterMut<'_, T> where T: Sync {}
 
 impl<'a, T: 'a> PixelsIterMut<'a, T> {
     #[inline]
+    #[track_caller]
     pub(crate) fn new(img: &mut super::ImgRefMut<'a, T>) -> Self {
         let width = NonZeroUsize::new(img.width()).expect("width > 0");
         let stride = img.stride();

@@ -9,11 +9,12 @@ macro_rules! impl_imgref_index {
     ($container:ty, $index:ty) => {
         impl<'a, Pixel: Copy> ops::Index<($index, $index)> for Img<$container> {
             type Output = Pixel;
-            #[inline(always)]
             /// Read a pixel at `(x,y)` location (e.g. px = `img[(x,y)]`)
             ///
             /// Coordinates may be outside `width`/`height` if the buffer has enough padding.
             /// The x coordinate can't exceed `stride`.
+            #[inline(always)]
+            #[cfg_attr(debug_assertions, track_caller)]
             fn index(&self, index: ($index, $index)) -> &Self::Output {
                 let stride = self.stride();
                 debug_assert_eq!(stride, stride as $index as usize);
@@ -27,11 +28,12 @@ macro_rules! impl_imgref_index {
 macro_rules! impl_imgref_index_mut {
     ($container:ty, $index:ty) => {
         impl<'a, Pixel: Copy> ops::IndexMut<($index, $index)> for Img<$container> {
-            #[inline(always)]
             /// Write a pixel at `(x,y)` location (e.g. `img[(x,y)] = px`)
             ///
             /// Coordinates may be outside `width`/`height` if the buffer has enough padding.
             /// The x coordinate can't exceed `stride`.
+            #[inline(always)]
+            #[cfg_attr(debug_assertions, track_caller)]
             fn index_mut(&mut self, index: ($index, $index)) -> &mut Self::Output {
                 let stride = self.stride();
                 debug_assert_eq!(stride, stride as $index as usize);
