@@ -125,7 +125,7 @@ fn test_eq_hash() {
     assert_eq!(img2.as_ref(), img3.as_mut());
 
     let mut map = HashSet::new();
-    img3[(0usize,0usize)] = 100;
+    img3[(0usize, 0usize)] = 100;
     assert_ne!(img1, img3);
     assert!(map.insert(img1));
     assert!(map.insert(img3));
@@ -134,9 +134,9 @@ fn test_eq_hash() {
 }
 
 #[cfg(test)]
-use std::fmt::Debug;
-#[cfg(test)]
 use std::collections::HashSet;
+#[cfg(test)]
+use std::fmt::Debug;
 
 #[cfg(test)]
 fn equiv<A>(a: &A, b: &A) where A: Eq + PartialEq + Hash + Debug {

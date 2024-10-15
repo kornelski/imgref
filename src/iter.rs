@@ -136,13 +136,12 @@ impl<'a, T: 'a> DoubleEndedIterator for RowsIterMut<'a, T> {
     }
 }
 
-
 /// Iterates over pixels in the (sub)image. Call `Img.pixels()` to create it.
 ///
 /// Ignores padding, if there's any.
 #[must_use]
 pub struct PixelsIter<'a, T: Copy> {
-    inner: PixelsRefIter<'a, T>
+    inner: PixelsRefIter<'a, T>,
 }
 
 impl<'a, T: Copy + 'a> PixelsIter<'a, T> {
@@ -326,7 +325,8 @@ fn iter() {
                     left -= 1;
                     assert_eq!(left, iter1.len());
                 }
-                assert_eq!(0, iter1.len()); iter1.next();
+                assert_eq!(0, iter1.len());
+                iter1.next();
                 assert_eq!(0, iter1.len());
 
                 let mut iter2 = img.rows();

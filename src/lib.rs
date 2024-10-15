@@ -61,8 +61,8 @@ use core::slice;
 
 mod traits;
 
-mod ops;
 mod iter;
+mod ops;
 pub use iter::*;
 
 /// Image owning its pixels.
@@ -377,9 +377,9 @@ impl<'a, T: Clone> ImgRef<'a, T> {
         let height = self.height();
         let stride = self.stride();
         if width == stride {
-            return (Cow::Borrowed(self.buf), width, height)
+            return (Cow::Borrowed(self.buf), width, height);
         }
-        let mut buf = Vec::with_capacity(width*height);
+        let mut buf = Vec::with_capacity(width * height);
         for row in self.rows() {
             buf.extend_from_slice(row);
         }
@@ -404,8 +404,8 @@ impl<'slice, T> ImgRefMut<'slice, T> {
     #[must_use]
     #[track_caller]
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
-        assert!(top+height <= self.height());
-        assert!(left+width <= self.width());
+        assert!(top + height <= self.height());
+        assert!(left + width <= self.width());
         let (start, end, stride) = sub_image(left, top, width, height, self.stride(), self.buf.len());
         let buf = &mut self.buf[start..end];
         ImgRefMut::new_stride(buf, width, height, stride)
@@ -536,8 +536,8 @@ impl<T> ImgVec<T> {
     #[must_use]
     #[track_caller]
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
-        assert!(top+height <= self.height());
-        assert!(left+width <= self.width());
+        assert!(top + height <= self.height());
+        assert!(left + width <= self.width());
         let start = self.stride * top + left;
         let min_buf_size = if self.height > 0 { self.stride * height + width - self.stride } else {0};
         let buf = &mut self.buf[start .. start + min_buf_size];

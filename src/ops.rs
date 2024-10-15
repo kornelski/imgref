@@ -9,6 +9,7 @@ macro_rules! impl_imgref_index {
     ($container:ty, $index:ty) => {
         impl<'a, Pixel: Copy> ops::Index<($index, $index)> for Img<$container> {
             type Output = Pixel;
+
             /// Read a pixel at `(x,y)` location (e.g. px = `img[(x,y)]`)
             ///
             /// Coordinates may be outside `width`/`height` if the buffer has enough padding.
@@ -66,11 +67,11 @@ fn index() {
     assert_eq!(5, img.sub_image_mut(1,1,1,1)[(0usize,0usize)]);
 }
 
-
 macro_rules! impl_imgref_row_index {
     ($container:ty) => {
         impl<'a, Pixel: Copy> ops::Index<usize> for Img<$container> {
             type Output = [Pixel];
+
             #[inline(always)]
             /// Take n-th row as a slice. Same as `.rows().nth(n).unwrap()`
             ///
