@@ -396,7 +396,8 @@ impl<'slice, T> ImgRefMut<'slice, T> {
         self.as_ref().sub_image(left, top, width, height)
     }
 
-    /// Trim this image without copying.
+    /// Slices this image reference to produce another reference to a subregion of it.
+    ///
     /// Note that mutable borrows are exclusive, so it's not possible to have more than
     /// one mutable subimage at a time.
     #[inline]
@@ -404,6 +405,21 @@ impl<'slice, T> ImgRefMut<'slice, T> {
     #[must_use]
     #[track_caller]
     pub fn sub_image_mut(&mut self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'_, T> {
+        assert!(top + height <= self.height());
+        assert!(left + width <= self.width());
+        let (start, end, stride) = sub_image(left, top, width, height, self.stride(), self.buf.len());
+        let buf = &mut self.buf[start..end];
+        ImgRefMut::new_stride(buf, width, height, stride)
+    }
+
+    /// Transforms this image reference to refer to a subregion.
+    /// 
+    /// This is identical in behavior to [`ImgRefMut::sub_image_mut()`], except that it returns an
+    /// [`ImgRefMut`] with the same lifetime, rather than a reborrow with a shorter lifetime.
+    #[allow(deprecated)]
+    #[must_use]
+    #[track_caller]
+    pub fn into_sub_image_mut(self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'slice, T> {
         assert!(top + height <= self.height());
         assert!(left + width <= self.width());
         let (start, end, stride) = sub_image(left, top, width, height, self.stride(), self.buf.len());
@@ -871,13 +887,21 @@ mod tests {
         assert_eq!(1, subimg.rows().count());
         }
 
-        let mut img = img;
-        let mut subimg = img.sub_image_mut(1, 1, 2, 1);
-        assert_eq!(1, subimg.rows().count());
-        assert_eq!(1, subimg.rows_mut().count());
-        assert_eq!(1, subimg.rows_mut().rev().count());
-        assert_eq!(1, subimg.rows_mut().fuse().rev().count());
-        assert_eq!(subimg.buf()[0], 6);
+        // 3 different methods for constructing mutable sub-images
+        let mut img_for_mut_1 = img.clone();
+        let mut img_for_mut_2 = img.clone();
+        let mut img_for_mut_3 = img;
+        for mut subimg in [
+            img_for_mut_1.sub_image_mut(1, 1, 2, 1),
+            img_for_mut_2.as_mut().sub_image_mut(1, 1, 2, 1),
+            img_for_mut_3.as_mut().into_sub_image_mut(1, 1, 2, 1),
+        ] {
+            assert_eq!(1, subimg.rows().count());
+            assert_eq!(1, subimg.rows_mut().count());
+            assert_eq!(1, subimg.rows_mut().rev().count());
+            assert_eq!(1, subimg.rows_mut().fuse().rev().count());
+            assert_eq!(subimg.buf()[0], 6);
+        }
     }
 
     #[test]
