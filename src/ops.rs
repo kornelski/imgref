@@ -81,7 +81,7 @@ macro_rules! impl_imgref_row_index {
                 let stride = self.stride();
                 let width = self.width();
                 let start = row * stride;
-                &self.buf()[start .. start + width]
+                self.buf().get(start .. start + width).unwrap_or_else(|| index_fail(row))
             }
         }
     };
@@ -99,7 +99,7 @@ macro_rules! impl_imgref_row_index_mut {
                 let stride = self.stride();
                 let width = self.width();
                 let start = row * stride;
-                &mut self.buf_mut()[start .. start + width]
+                self.buf_mut().get_mut(start .. start + width).unwrap_or_else(|| index_fail(row))
             }
         }
     };
@@ -110,6 +110,11 @@ impl_imgref_row_index! {&'a mut [Pixel]}
 impl_imgref_row_index_mut! {&'a mut [Pixel]}
 impl_imgref_row_index! {Vec<Pixel>}
 impl_imgref_row_index_mut! {Vec<Pixel>}
+
+#[cold]
+fn index_fail(row: usize) -> ! {
+    panic!("row {row} is out of range")
+}
 
 #[test]
 fn index_by_row() {
