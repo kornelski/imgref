@@ -115,7 +115,7 @@ pub trait ImgExt<Pixel> {
     fn rows_padded(&self) -> slice::Chunks<'_, Pixel>;
 
     /// Borrow the container
-    fn as_ref(&self) -> ImgRef<Pixel>;
+    fn as_ref(&self) -> ImgRef<'_, Pixel>;
 }
 
 /// Additional methods that depend on buffer size
@@ -133,7 +133,7 @@ pub trait ImgExtMut<Pixel> {
     fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel>;
 
     /// Borrow the container mutably
-    fn as_mut(&mut self) -> ImgRefMut<Pixel>;
+    fn as_mut(&mut self) -> ImgRefMut<'_, Pixel>;
 }
 
 /// Basic struct used for both owned (alias `ImgVec`) and borrowed (alias `ImgRef`) image fragments.
@@ -268,7 +268,7 @@ impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[P
 
     #[inline(always)]
     #[allow(deprecated)]
-    fn as_ref(&self) -> ImgRef<Pixel> {
+    fn as_ref(&self) -> ImgRef<'_, Pixel> {
         Img {
             buf: self.buf.as_ref(),
             width: self.width,
@@ -294,7 +294,7 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
 
     #[inline(always)]
     #[allow(deprecated)]
-    fn as_mut(&mut self) -> ImgRefMut<Pixel> {
+    fn as_mut(&mut self) -> ImgRefMut<'_, Pixel> {
         Img {
             buf: self.buf.as_mut(),
             width: self.width,
@@ -326,7 +326,7 @@ impl<'slice, T> ImgRef<'slice, T> {
     ///
     /// # Panics
     ///
-    /// It will panic if sub_image is outside of the image area
+    /// It will panic if `sub_image` is outside of the image area
     /// (left + width must be <= container width, etc.)
     #[inline]
     #[must_use]
@@ -398,6 +398,10 @@ impl<'slice, T> ImgRefMut<'slice, T> {
     ///
     /// Note that mutable borrows are exclusive, so it's not possible to have more than
     /// one mutable subimage at a time.
+    ///
+    /// ## Panics
+    ///
+    /// If the coordinates are out of bounds
     #[inline]
     #[allow(deprecated)]
     #[must_use]
@@ -414,10 +418,14 @@ impl<'slice, T> ImgRefMut<'slice, T> {
     /// 
     /// This is identical in behavior to [`ImgRefMut::sub_image_mut()`], except that it returns an
     /// [`ImgRefMut`] with the same lifetime, rather than a reborrow with a shorter lifetime.
+    ///
+    /// ## Panics
+    ///
+    /// If the coordinates are out of bounds
     #[allow(deprecated)]
     #[must_use]
     #[track_caller]
-    pub fn into_sub_image_mut(self, left: usize, top: usize, width: usize, height: usize) -> ImgRefMut<'slice, T> {
+    pub fn into_sub_image_mut(self, left: usize, top: usize, width: usize, height: usize) -> Self {
         assert!(top + height <= self.height());
         assert!(left + width <= self.width());
         let (start, end, stride) = sub_image(left, top, width, height, self.stride(), self.buf.len());
@@ -550,6 +558,10 @@ impl<Container> IntoIterator for Img<Container> where Container: IntoIterator {
 
 impl<T> ImgVec<T> {
     /// Create a mutable view into a region within the image. See `sub_image()` for read-only views.
+    ///
+    /// ## Panics
+    ///
+    /// If the coordinates are out of bounds
     #[allow(deprecated)]
     #[must_use]
     #[track_caller]
@@ -635,6 +647,10 @@ impl<Container> Img<Container> {
     /// Stride can be equal to `width` or larger. If it's larger, then pixels between end of previous row and start of the next are considered a padding, and may be ignored.
     ///
     /// The `Container` is usually a `Vec` or a slice.
+    ///
+    /// ## Panics
+    ///
+    /// If stride is 0.
     #[inline]
     #[allow(deprecated)]
     #[track_caller]
