@@ -286,8 +286,6 @@ impl<Pixel,Container> ImgExtMut<Pixel> for Img<Container> where Container: AsMut
     /// # Panics
     ///
     /// If stride is 0
-    #[inline]
-    #[must_use]
     #[cfg(feature = "deprecated")]
     fn rows_padded_mut(&mut self) -> slice::ChunksMut<'_, Pixel> {
         let stride = self.stride();
@@ -474,7 +472,9 @@ impl<T: Copy> ImgRefMut<'_, T> {
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
+}
 
+impl<T> ImgRefMut<'_, T> {
     /// If you want to iterate in parallel, parallelize `rows()` instead.
     /// # Panics
     ///
@@ -494,7 +494,9 @@ impl<T: Copy> ImgVec<T> {
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
+}
 
+impl<T> ImgVec<T> {
     /// If you want to iterate in parallel, parallelize `rows()` instead.
     /// # Panics
     ///
