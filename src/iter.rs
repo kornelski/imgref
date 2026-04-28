@@ -280,11 +280,12 @@ impl<'a, T: 'a> PixelsIterMut<'a, T> {
         let height = img.height();
         let stride = img.stride();
         let buf = img.valid_buf_mut();
+        let ptr = buf.as_mut_ptr();
         match NonZeroUsize::new(width) {
             Some(width) if height > 0 => {
                 Self {
-                    current: buf.as_mut_ptr(),
-                    current_line_end: buf[width.get()..].as_mut_ptr(),
+                    current: ptr,
+                    current_line_end: unsafe { ptr.add(width.get()) },
                     width,
                     rows_left: height - 1,
                     pad: stride - width.get(),
@@ -293,8 +294,8 @@ impl<'a, T: 'a> PixelsIterMut<'a, T> {
             },
             _ => {
                 Self {
-                    current: buf.as_mut_ptr(),
-                    current_line_end: buf.as_mut_ptr(),
+                    current: ptr,
+                    current_line_end: ptr,
                     width: NonZeroUsize::new(1).unwrap(),
                     rows_left: 0,
                     pad: 0,
