@@ -24,29 +24,26 @@
 //!  use imgref::*;
 //!  # fn some_image_processing_function(img: ImgRef<u8>) -> ImgVec<u8> { img.new_buf(img.buf().to_vec()) }
 //!
-//!  fn main() {
-//!      let img = Img::new(vec![0; 1000], 50, 20); // 1000 pixels of a 50×20 image
+//!  let img = Img::new(vec![0; 1000], 50, 20); // 1000 pixels of a 50×20 image
 //!
-//!      let new_image = some_image_processing_function(img.as_ref()); // Use imgvec.as_ref() instead of &imgvec for better efficiency
+//!  let new_image = some_image_processing_function(img.as_ref()); // Use imgvec.as_ref() instead of &imgvec for better efficiency
 //!
-//!      println!("New size is {}×{}", new_image.width(), new_image.height());
-//!      println!("And the top left pixel is {:?}", new_image[(0u32,0u32)]);
+//!  println!("New size is {}×{}", new_image.width(), new_image.height());
+//!  println!("And the top left pixel is {:?}", new_image[(0u32,0u32)]);
 //!
-//!      let first_row_slice = &new_image[0];
+//!  let first_row_slice = &new_image[0];
 //!
-//!      for row in new_image.rows() {
-//!          // …
-//!      }
-//!      for px in new_image.pixels() {
-//!          // …
-//!      }
-//!
-//!      // slice (x, y, width, height) by reference - no copy!
-//!      let fragment = img.sub_image(5, 5, 15, 15);
-//!
-//!      //
-//!      let (vec, width, height) = fragment.to_contiguous_buf();
+//!  for row in new_image.rows() {
+//!      // …
 //!  }
+//!  for px in new_image.pixels() {
+//!      // …
+//!  }
+//!
+//!  // slice (x, y, width, height) by reference - no copy!
+//!  let fragment = img.sub_image(5, 5, 15, 15);
+//!
+//!  let (vec, width, height) = fragment.to_contiguous_buf();
 //!  ```
 
 #![no_std]
@@ -79,7 +76,7 @@ pub type ImgVec<Pixel> = Img<Vec<Pixel>>;
 pub type ImgRef<'slice, Pixel> = Img<&'slice [Pixel]>;
 
 /// Same as `ImgRef`, but mutable
-/// Pass this structure by value (i.e. `ImgRef`, not `&ImgRef`).
+/// Pass this structure by value (i.e. `ImgRefMut`, not `&ImgRefMut`). This type isn't `Copy`, but [`.as_mut()`](ImgRefMut::as_mut) can reborrow it.
 ///
 pub type ImgRefMut<'slice, Pixel> = Img<&'slice mut [Pixel]>;
 
@@ -183,7 +180,7 @@ pub struct Img<Container> {
 impl<Container> Img<Container> {
     /// Width of the image in pixels.
     ///
-    /// Note that this isn't same as the width of the row in image data, see `stride()`
+    /// Note that this isn't same as the width of the row in image data, see [`stride()`](Self::stride)
     #[inline(always)]
     #[allow(deprecated)]
     pub const fn width(&self) -> usize { self.width as usize }
@@ -195,27 +192,30 @@ impl<Container> Img<Container> {
 
     /// Number of _pixels_ to skip in the container to advance to the next row.
     ///
+    /// Must be >= `width` and can't be 0.
+    ///
     /// Note the last row may have fewer pixels than the stride.
-    /// Some APIs use number of *bytes* for a stride. You may need to multiply this one by number of pixels.
+    ///
+    /// Some APIs use number of bytes for a stride, but this stride is in pixels.
     #[inline(always)]
     #[allow(deprecated)]
     pub const fn stride(&self) -> usize { self.stride }
 
-    /// Immutable reference to the pixel storage. Warning: exposes stride. Use `pixels()` or `rows()` instead.
+    /// Immutable reference to the pixel storage. Warning: exposes stride. Use [`pixels()`](Self::pixels) or [`rows()`](Self::rows) instead.
     ///
-    /// See also `into_contiguous_buf()`.
+    /// See also [`into_contiguous_buf()`](Self::into_contiguous_buf).
     #[inline(always)]
     #[allow(deprecated)]
     pub const fn buf(&self) -> &Container { &self.buf }
 
-    /// Mutable reference to the pixel storage. Warning: exposes stride. Use `pixels_mut()` or `rows_mut()` instead.
+    /// Mutable reference to the pixel storage. Warning: exposes stride. Use [`pixels_mut()`](Self::pixels_mut) or [`rows_mut()`](Self::rows_mut) instead.
     ///
-    /// See also `into_contiguous_buf()`.
+    /// See also [`into_contiguous_buf()`](Self::into_contiguous_buf).
     #[inline(always)]
     #[allow(deprecated)]
     pub fn buf_mut(&mut self) -> &mut Container { &mut self.buf }
 
-    /// Get the pixel storage by consuming the image. Be careful about stride — see `into_contiguous_buf()` for a safe version.
+    /// Get the pixel storage by consuming the image. Be careful about stride — see [`into_contiguous_buf()`](Self::into_contiguous_buf) for a safe version.
     #[inline(always)]
     #[allow(deprecated)]
     pub fn into_buf(self) -> Container { self.buf }
@@ -712,6 +712,10 @@ impl<T: Copy> Img<Vec<T>> {
 
 impl<OldContainer> Img<OldContainer> {
     /// A convenience method for creating an image of the same size and stride, but with a new buffer.
+    ///
+    /// # Panics
+    ///
+    /// If the new buffer has a different length
     #[inline]
     #[track_caller]
     pub fn map_buf<NewContainer, OldPixel, NewPixel, F>(self, callback: F) -> Img<NewContainer>
@@ -727,6 +731,10 @@ impl<OldContainer> Img<OldContainer> {
     }
 
     /// A convenience method for creating an image of the same size and stride, but with a new buffer.
+    ///
+    /// # Panics
+    ///
+    /// If the new buffer has a different length
     #[inline]
     #[track_caller]
     pub fn new_buf<NewContainer, OldPixel, NewPixel>(&self, new_buf: NewContainer) -> Img<NewContainer>
