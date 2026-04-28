@@ -219,27 +219,6 @@ impl<Container> Img<Container> {
     #[inline(always)]
     #[allow(deprecated)]
     pub fn into_buf(self) -> Container { self.buf }
-
-    #[deprecated(note = "this was meant to be private, use new_buf() and/or rows()")]
-    #[cfg(feature = "deprecated")]
-    #[doc(hidden)]
-    pub fn rows_buf<'buf, T: 'buf>(&self, buf: &'buf [T]) -> RowsIter<'buf, T> {
-        self.rows_buf_internal(buf)
-    }
-
-    #[inline]
-    #[track_caller]
-    fn rows_buf_internal<'buf, T: 'buf>(&self, buf: &'buf [T]) -> RowsIter<'buf, T> {
-        let stride = self.stride();
-        debug_assert!(self.width() <= self.stride());
-        debug_assert!(buf.len() >= self.width() * self.height());
-        assert!(stride > 0);
-        let non_padded = &buf[0..stride * self.height() + self.width() - stride];
-        RowsIter {
-            width: self.width(),
-            inner: non_padded.chunks(stride),
-        }
-    }
 }
 
 impl<Pixel,Container> ImgExt<Pixel> for Img<Container> where Container: AsRef<[Pixel]> {
@@ -347,8 +326,12 @@ impl<'slice, T> ImgRef<'slice, T> {
     /// If stride is 0
     ///
     /// See also `pixels()`
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn rows(&self) -> RowsIter<'slice, T> {
-        self.rows_buf_internal(self.buf())
+        RowsIter {
+            inner: self.valid_buf().chunks(self.stride()),
+            width: self.width(),
+        }
     }
 
     /// Deprecated
@@ -489,7 +472,7 @@ impl<T> ImgRefMut<'_, T> {
     /// if width is 0
     #[inline]
     pub fn pixels_mut(&mut self) -> PixelsIterMut<'_, T> {
-        PixelsIterMut::new(self)
+        PixelsIterMut::new(self.as_mut())
     }
 }
 
@@ -499,6 +482,7 @@ impl<T: Copy> ImgVec<T> {
     ///
     /// if width is 0
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn pixels(&self) -> PixelsIter<'_, T> {
         PixelsIter::new(self.as_ref())
     }
@@ -510,8 +494,9 @@ impl<T> ImgVec<T> {
     ///
     /// if width is 0
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn pixels_mut(&mut self) -> PixelsIterMut<'_, T> {
-        PixelsIterMut::new(&mut self.as_mut())
+        PixelsIterMut::new(self.as_mut())
     }
 }
 
@@ -523,7 +508,7 @@ impl<T> ImgRefMut<'_, T> {
     /// if stride is 0
     #[inline]
     pub fn rows(&self) -> RowsIter<'_, T> {
-        self.rows_buf_internal(&self.buf()[..])
+        self.as_ref().rows()
     }
 
     /// Iterate over whole rows as slices
@@ -618,8 +603,9 @@ impl<T> ImgVec<T> {
     ///
     /// This iterator is a good candidate for parallelization (e.g. rayon's `par_bridge()`)
     #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn rows(&self) -> RowsIter<'_, T> {
-        self.rows_buf_internal(self.buf())
+        self.as_ref().rows()
     }
 
     /// Iterate over rows of the image as mutable slices
@@ -651,6 +637,12 @@ impl<Container> Img<Container> {
     /// ## Panics
     ///
     /// If stride is 0.
+    ///
+    /// <div class="warning">
+    ///
+    /// This method is (too) generic over the container type, and can't check its length. Other methods will panic if the buffer is too small.
+    ///
+    /// </div>
     #[inline]
     #[allow(deprecated)]
     #[track_caller]
@@ -672,9 +664,54 @@ impl<Container> Img<Container> {
     /// Assumes the pixels in container are contiguous, layed out row by row with `width` pixels per row and at least `height` rows.
     ///
     /// If the container is larger than `width`×`height` pixels, the extra rows are a considered a padding and may be ignored.
+    ///
+    /// # Panics
+    ///
+    /// <div class="warning">
+    ///
+    /// This method is (too) generic over the container type, and can't check its length. Other methods will panic if the buffer is too small.
+    ///
+    /// </div>
     #[inline]
     pub fn new(buf: Container, width: usize, height: usize) -> Self {
         Self::new_stride(buf, width, height, width)
+    }
+}
+
+#[cold]
+#[inline(never)]
+#[cfg_attr(debug_assertions, track_caller)]
+fn imgref_invalid_size(width: u32, height: u32, stride: usize, min_size: usize, len: usize) {
+    panic!("Invalid ImgRef params. Got stride={stride} for {width}×{height}; len={len} (needed {min_size})");
+}
+
+impl<T> ImgRefMut<'_, T> {
+    #[cfg_attr(debug_assertions, track_caller)]
+    fn valid_buf_mut(&mut self) -> &mut [T] {
+        let len = self.as_ref().valid_min_len();
+        &mut self.buf_mut()[..len]
+    }
+}
+
+impl<'buf, T> ImgRef<'buf, T> {
+    #[cfg_attr(debug_assertions, track_caller)]
+    fn valid_buf(&self) -> &'buf [T] {
+        &self.buf()[..self.valid_min_len()]
+    }
+
+    #[cfg_attr(debug_assertions, track_caller)]
+    #[inline(always)]
+    fn valid_min_len(&self) -> usize {
+        let stride = self.stride();
+        let width = self.width();
+        let height = self.height();
+        let min_size = if height == 0 || width == 0 { 0 } else { stride * height + width - stride };
+        let buf = self.buf();
+        #[allow(deprecated)]
+        if stride == 0 || stride < width || buf.len() < min_size {
+            imgref_invalid_size(self.width, self.height, stride, min_size, buf.len());
+        }
+        min_size
     }
 }
 
@@ -685,6 +722,7 @@ impl<T: Copy> Img<Vec<T>> {
     /// Efficiently performs operation in-place. For other containers use `pixels().collect()`.
     #[allow(deprecated)]
     #[must_use]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn into_contiguous_buf(mut self) -> (Vec<T>, usize, usize) {
         let (_, w, h) = self.as_contiguous_buf();
         (self.buf, w, h)
@@ -696,13 +734,16 @@ impl<T: Copy> Img<Vec<T>> {
     /// Efficiently performs operation in-place. For other containers use `pixels().collect()`.
     #[allow(deprecated)]
     #[must_use]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn as_contiguous_buf(&mut self) -> (&[T], usize, usize) {
         let width = self.width();
         let height = self.height();
         let stride = self.stride();
         if width != stride {
+            let mut ref_mut = self.as_mut();
+            let buf = ref_mut.valid_buf_mut();
             for row in 1..height {
-                self.buf.copy_within(row * stride .. row * stride + width, row * width);
+                buf.copy_within(row * stride .. row * stride + width, row * width);
             }
         }
         self.buf.truncate(width * height);

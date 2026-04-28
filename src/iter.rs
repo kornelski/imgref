@@ -191,21 +191,31 @@ impl<'a, T: 'a> PixelsRefIter<'a, T> {
     #[inline]
     #[track_caller]
     pub(crate) fn new(img: super::ImgRef<'a, T>) -> Self {
-        let width = NonZeroUsize::new(img.width()).expect("width > 0");
+        let buf = img.valid_buf();
         let height = img.height();
-        let stride = img.stride();
-        assert!(stride >= width.get());
-        let pad = stride - width.get();
-        debug_assert!(img.buf().len() + stride >= stride * height + width.get(),
-            "buffer len {} is less than {} (({}+{})x{})", img.buf().len(),
-            stride * height - pad, width, pad, height);
-        Self {
-            current: img.buf().as_ptr(),
-            current_line_end: img.buf()[width.get()..].as_ptr(),
-            width,
-            rows_left: height,
-            pad,
-            _dat: PhantomData,
+        match NonZeroUsize::new(img.width()) {
+            Some(width) if height > 0 => {
+                let stride = img.stride();
+                let pad = stride - width.get();
+                Self {
+                    current: buf.as_ptr(),
+                    current_line_end: buf[width.get()..].as_ptr(),
+                    width,
+                    rows_left: height - 1,
+                    pad,
+                    _dat: PhantomData,
+                }
+            },
+            _ => {
+                Self {
+                    current: buf.as_ptr(),
+                    current_line_end: buf.as_ptr(),
+                    width: NonZeroUsize::new(1).unwrap(),
+                    rows_left: 0,
+                    pad: 0,
+                    _dat: PhantomData,
+                }
+            }
         }
     }
 }
@@ -217,7 +227,7 @@ impl<'a, T: 'a> Iterator for PixelsRefIter<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             if self.current >= self.current_line_end {
-                if self.rows_left <= 1 {
+                if self.rows_left == 0 {
                     return None;
                 }
                 self.rows_left -= 1;
@@ -237,7 +247,7 @@ impl<'a, T: 'a> Iterator for PixelsRefIter<'a, T> {
             self.current_line_end.offset_from(self.current)
         };
         debug_assert!(this_line >= 0);
-        let len = this_line as usize + (self.rows_left - 1) * self.width.get();
+        let len = this_line as usize + self.rows_left * self.width.get();
         (len, Some(len))
     }
 }
@@ -253,7 +263,7 @@ impl<T: Copy> ExactSizeIterator for PixelsRefIter<'_, T> {
 pub struct PixelsIterMut<'a, T> {
     current: *mut T,
     current_line_end: *mut T,
-    y: usize,
+    rows_left: usize,
     width: NonZeroUsize,
     pad: usize,
     _dat: PhantomData<&'a mut [T]>,
@@ -265,17 +275,32 @@ unsafe impl<T> Sync for PixelsIterMut<'_, T> where T: Sync {}
 impl<'a, T: 'a> PixelsIterMut<'a, T> {
     #[inline]
     #[track_caller]
-    pub(crate) fn new(img: &mut super::ImgRefMut<'a, T>) -> Self {
-        let width = NonZeroUsize::new(img.width()).expect("width > 0");
+    pub(crate) fn new(mut img: super::ImgRefMut<'a, T>) -> Self {
+        let width = img.width();
+        let height = img.height();
         let stride = img.stride();
-        debug_assert!(!img.buf().is_empty() && img.buf().len() + stride >= stride * img.height() + width.get());
-        Self {
-            current: img.buf_mut().as_mut_ptr(),
-            current_line_end: img.buf_mut()[width.get()..].as_mut_ptr(),
-            width,
-            y: img.height(),
-            pad: stride - width.get(),
-            _dat: PhantomData,
+        let buf = img.valid_buf_mut();
+        match NonZeroUsize::new(width) {
+            Some(width) if height > 0 => {
+                Self {
+                    current: buf.as_mut_ptr(),
+                    current_line_end: buf[width.get()..].as_mut_ptr(),
+                    width,
+                    rows_left: height - 1,
+                    pad: stride - width.get(),
+                    _dat: PhantomData,
+                }
+            },
+            _ => {
+                Self {
+                    current: buf.as_mut_ptr(),
+                    current_line_end: buf.as_mut_ptr(),
+                    width: NonZeroUsize::new(1).unwrap(),
+                    rows_left: 0,
+                    pad: 0,
+                    _dat: PhantomData,
+                }
+            }
         }
     }
 }
@@ -287,10 +312,10 @@ impl<'a, T: 'a> Iterator for PixelsIterMut<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             if self.current >= self.current_line_end {
-                self.y -= 1;
-                if self.y == 0 {
+                if self.rows_left == 0 {
                     return None;
                 }
+                self.rows_left -= 1;
                 self.current = self.current_line_end.add(self.pad);
                 self.current_line_end = self.current.add(self.width.get());
             }
@@ -299,6 +324,20 @@ impl<'a, T: 'a> Iterator for PixelsIterMut<'a, T> {
             Some(px)
         }
     }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let this_line = unsafe {
+            self.current_line_end.offset_from(self.current)
+        };
+        debug_assert!(this_line >= 0);
+        let len = this_line as usize + self.rows_left * self.width.get();
+        (len, Some(len))
+    }
+}
+
+impl<T: Copy> ExactSizeIterator for PixelsIterMut<'_, T> {
 }
 
 #[test]
@@ -326,6 +365,7 @@ fn iter() {
                     assert_eq!(left, iter1.len());
                 }
                 assert_eq!(0, iter1.len());
+                assert_eq!(0, left);
                 iter1.next();
                 assert_eq!(0, iter1.len());
 
@@ -338,7 +378,7 @@ fn iter() {
                     None => {
                         assert_eq!(height, 0);
                     },
-                };
+                }
             }
         }
     }
