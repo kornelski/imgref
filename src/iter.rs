@@ -184,7 +184,7 @@ pub struct PixelsRefIter<'a, T> {
     _dat: PhantomData<&'a [T]>,
 }
 
-unsafe impl<T> Send for PixelsRefIter<'_, T> where T: Send {}
+unsafe impl<T> Send for PixelsRefIter<'_, T> where T: Sync {}
 unsafe impl<T> Sync for PixelsRefIter<'_, T> where T: Sync {}
 
 impl<'a, T: 'a> PixelsRefIter<'a, T> {
@@ -386,13 +386,12 @@ fn iter() {
 }
 
 #[test]
+#[should_panic(expected = "Invalid ImgRef params")]
 fn rows_iter_len_overflow_can_create_oob_slice() {
     // `ImgRef::valid_min_len()` computes `stride * height + width - stride`
-    // with unchecked `usize` arithmetic. In release mode this wraps to `1`,
-    // so `rows()` accepts a one-element buffer for a 2x2 image with an
-    // impossible stride. `RowsIter::next()` then calls `get_unchecked(0..2)`
-    // on a one-element chunk, which violates the slice bounds precondition
-    // and is reported as UB by Miri.
+    // using checked arithmetic. It must panic on overflow instead of accepting
+    // a one-element buffer for a 2x2 image with an impossible stride and later
+    // reaching `RowsIter::next()`'s unsafe `get_unchecked(0..2)`.
     let buf = [0u8; 1];
     let img = super::Img::new_stride(&buf[..], 2, 2, usize::MAX);
 
@@ -400,12 +399,11 @@ fn rows_iter_len_overflow_can_create_oob_slice() {
 }
 
 #[test]
+#[should_panic(expected = "Invalid ImgRef params")]
 fn pixels_ref_len_overflow_can_walk_oob() {
-    // The same unchecked length calculation can wrap to `1` for a 1x3 image.
-    // `PixelsRefIter` therefore starts from a one-element slice even though
-    // the second row would be at an enormous offset. The second `next()` moves
-    // the raw pointer by `stride - width` from the end of that one-element
-    // slice, violating `ptr::add`'s in-allocation requirement under Miri.
+    // The same checked length calculation must panic on overflow for a 1x3
+    // image, rather than letting `PixelsRefIter` start from a one-element slice
+    // and later move the raw pointer far outside the allocation.
     let buf = [0u8; 1];
     let img = super::Img::new_stride(&buf[..], 1, 3, usize::MAX / 2 + 1);
     let mut pixels = img.pixels_ref();
@@ -415,35 +413,48 @@ fn pixels_ref_len_overflow_can_walk_oob() {
 }
 
 #[test]
-fn pixels_ref_iter_send_allows_cell_data_race() {
-    // `PixelsRefIter<'_, T>` is `Send` when `T: Send`, but it yields `&T`
-    // values in the receiving thread. Shared references may cross threads
-    // only when `T: Sync`. `Cell<u32>` is `Send` but not `Sync`, so the safe
-    // API below sends an iterator to another thread and mutates the same
-    // `Cell` from both threads without synchronization. Miri reports this as
-    // a data race.
+fn pixels_ref_iter_send_requires_sync_pixels() {
+    // `PixelsRefIter<'_, T>` yields `&T`, so sending it to another thread is
+    // only sound when `T: Sync`. `Cell<u32>` is `Send` but not `Sync`; if the
+    // iterator were `Send` for `T: Send`, safe code could create a data race by
+    // sending the iterator to another thread while retaining local shared
+    // access to the same cell.
     use core::cell::Cell;
 
-    let buf = [Cell::new(0u32)];
-    let img = super::Img::new(&buf[..], 1, 1);
-    let mut pixels = img.pixels_ref();
+    macro_rules! assert_not_impl_any {
+        ($x:ty: $($t:path),+ $(,)?) => {
+            const _: fn() = || {
+                trait AmbiguousIfImpl<A> { fn some_item() {} }
+                impl<T: ?Sized> AmbiguousIfImpl<()> for T {}
+                impl<T: ?Sized $(+ $t)+> AmbiguousIfImpl<u8> for T {}
+                <$x as AmbiguousIfImpl<_>>::some_item()
+            };
+        };
+    }
 
-    std::thread::scope(|scope| {
-        let handle = scope.spawn(move || {
-            pixels.next().unwrap().set(1);
-        });
+    fn assert_send<T: Send>() {}
 
-        buf[0].set(2);
-        handle.join().unwrap();
-    });
+    assert_send::<PixelsRefIter<'static, u32>>();
+    assert_not_impl_any!(PixelsRefIter<'static, Cell<u32>>: Send);
 }
 
 #[test]
+#[should_panic(expected = "Invalid ImgRef params")]
+fn pixels_mut_len_overflow_can_create_oob_line_end() {
+    // `PixelsIterMut::new()` computes `ptr.add(width)` for the first row's
+    // line end. Checked validation must reject this wrapped 2x2 image before
+    // creating a one-element mutable slice where that pointer is out of bounds.
+    let mut img = super::Img::new_stride(vec![0u8; 1], 2, 2, usize::MAX);
+
+    let _ = img.pixels_mut();
+}
+
+#[test]
+#[should_panic(expected = "Invalid ImgRef params")]
 fn pixels_mut_len_overflow_can_walk_oob() {
-    // Mutable pixel iteration has the same invariant: after the wrapped
-    // `valid_min_len()` accepts a one-element mutable slice, the second
-    // `next()` computes a raw pointer far outside that slice. Miri reports the
-    // out-of-bounds `ptr::add` before any invalid reference needs to be used.
+    // Mutable pixel iteration has the same invariant: checked validation must
+    // reject this wrapped 1x3 image before the second row would require raw
+    // pointer arithmetic far outside the one-element allocation.
     let mut buf = [0u8; 1];
     let mut img = super::Img::new_stride(&mut buf[..], 1, 3, usize::MAX / 2 + 1);
     let mut pixels = img.pixels_mut();

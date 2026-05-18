@@ -681,7 +681,7 @@ impl<Container> Img<Container> {
 #[cold]
 #[inline(never)]
 #[cfg_attr(debug_assertions, track_caller)]
-fn imgref_invalid_size(width: u32, height: u32, stride: usize, min_size: usize, len: usize) {
+fn imgref_invalid_size(width: u32, height: u32, stride: usize, min_size: usize, len: usize) -> ! {
     panic!("Invalid ImgRef params. Got stride={stride} for {width}×{height}; len={len} (needed {min_size})");
 }
 
@@ -705,10 +705,24 @@ impl<'buf, T> ImgRef<'buf, T> {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();
-        let min_size = if height == 0 || width == 0 { 0 } else { stride * height + width - stride };
         let buf = self.buf();
         #[allow(deprecated)]
-        if stride == 0 || stride < width || buf.len() < min_size {
+        if stride == 0 || stride < width {
+            imgref_invalid_size(self.width, self.height, stride, 0, buf.len());
+        }
+        #[allow(deprecated)]
+        let min_size = if height == 0 || width == 0 {
+            0
+        } else {
+            stride
+                .checked_mul(height - 1)
+                .and_then(|len| len.checked_add(width))
+                .unwrap_or_else(|| {
+                    imgref_invalid_size(self.width, self.height, stride, usize::MAX, buf.len())
+                })
+        };
+        #[allow(deprecated)]
+        if buf.len() < min_size {
             imgref_invalid_size(self.width, self.height, stride, min_size, buf.len());
         }
         min_size
