@@ -384,3 +384,70 @@ fn iter() {
         }
     }
 }
+
+#[test]
+fn rows_iter_len_overflow_can_create_oob_slice() {
+    // `ImgRef::valid_min_len()` computes `stride * height + width - stride`
+    // with unchecked `usize` arithmetic. In release mode this wraps to `1`,
+    // so `rows()` accepts a one-element buffer for a 2x2 image with an
+    // impossible stride. `RowsIter::next()` then calls `get_unchecked(0..2)`
+    // on a one-element chunk, which violates the slice bounds precondition
+    // and is reported as UB by Miri.
+    let buf = [0u8; 1];
+    let img = super::Img::new_stride(&buf[..], 2, 2, usize::MAX);
+
+    let _ = img.rows().next();
+}
+
+#[test]
+fn pixels_ref_len_overflow_can_walk_oob() {
+    // The same unchecked length calculation can wrap to `1` for a 1x3 image.
+    // `PixelsRefIter` therefore starts from a one-element slice even though
+    // the second row would be at an enormous offset. The second `next()` moves
+    // the raw pointer by `stride - width` from the end of that one-element
+    // slice, violating `ptr::add`'s in-allocation requirement under Miri.
+    let buf = [0u8; 1];
+    let img = super::Img::new_stride(&buf[..], 1, 3, usize::MAX / 2 + 1);
+    let mut pixels = img.pixels_ref();
+
+    let _ = pixels.next();
+    let _ = pixels.next();
+}
+
+#[test]
+fn pixels_ref_iter_send_allows_cell_data_race() {
+    // `PixelsRefIter<'_, T>` is `Send` when `T: Send`, but it yields `&T`
+    // values in the receiving thread. Shared references may cross threads
+    // only when `T: Sync`. `Cell<u32>` is `Send` but not `Sync`, so the safe
+    // API below sends an iterator to another thread and mutates the same
+    // `Cell` from both threads without synchronization. Miri reports this as
+    // a data race.
+    use core::cell::Cell;
+
+    let buf = [Cell::new(0u32)];
+    let img = super::Img::new(&buf[..], 1, 1);
+    let mut pixels = img.pixels_ref();
+
+    std::thread::scope(|scope| {
+        let handle = scope.spawn(move || {
+            pixels.next().unwrap().set(1);
+        });
+
+        buf[0].set(2);
+        handle.join().unwrap();
+    });
+}
+
+#[test]
+fn pixels_mut_len_overflow_can_walk_oob() {
+    // Mutable pixel iteration has the same invariant: after the wrapped
+    // `valid_min_len()` accepts a one-element mutable slice, the second
+    // `next()` computes a raw pointer far outside that slice. Miri reports the
+    // out-of-bounds `ptr::add` before any invalid reference needs to be used.
+    let mut buf = [0u8; 1];
+    let mut img = super::Img::new_stride(&mut buf[..], 1, 3, usize::MAX / 2 + 1);
+    let mut pixels = img.pixels_mut();
+
+    let _ = pixels.next();
+    let _ = pixels.next();
+}
