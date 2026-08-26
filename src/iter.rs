@@ -170,6 +170,8 @@ impl<T: Copy> ExactSizeIterator for PixelsIter<'_, T> {
     }
 }
 
+impl<T: Copy> FusedIterator for PixelsIter<'_, T> {}
+
 /// Iterates over pixels in the (sub)image. Call `Img.pixels_ref()` to create it.
 ///
 /// Ignores padding, if there's any.
@@ -254,6 +256,8 @@ impl<'a, T: 'a> Iterator for PixelsRefIter<'a, T> {
 
 impl<T: Copy> ExactSizeIterator for PixelsRefIter<'_, T> {
 }
+
+impl<T> FusedIterator for PixelsRefIter<'_, T> {}
 
 /// Iterates over pixels in the (sub)image. Call `Img.pixels_mut()` to create it.
 ///
@@ -340,6 +344,8 @@ impl<'a, T: 'a> Iterator for PixelsIterMut<'a, T> {
 
 impl<T: Copy> ExactSizeIterator for PixelsIterMut<'_, T> {
 }
+
+impl<T> FusedIterator for PixelsIterMut<'_, T> {}
 
 #[test]
 fn iter() {
