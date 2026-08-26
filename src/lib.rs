@@ -516,17 +516,15 @@ impl<T> ImgRefMut<'_, T> {
     ///
     /// # Panics
     ///
-    /// if stride is 0
+    /// if stride is 0, or the buffer is too small for the image dimensions
     #[inline]
-    #[allow(deprecated)]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
         let width = self.width();
-        let height = self.height();
-        let non_padded = &mut self.buf[0..stride * height + width - stride];
         RowsIterMut {
             width,
-            inner: non_padded.chunks_mut(stride),
+            inner: self.valid_buf_mut().chunks_mut(stride),
         }
     }
 }
@@ -614,13 +612,17 @@ impl<T> ImgVec<T> {
     /// Each slice is guaranteed to be exactly `width` pixels wide.
     ///
     /// This iterator is a good candidate for parallelization (e.g. rayon's `par_bridge()`)
+    ///
+    /// # Panics
+    ///
+    /// If stride is 0, or the buffer is too small for the image dimensions.
     #[inline]
-    #[allow(deprecated)]
+    #[cfg_attr(debug_assertions, track_caller)]
     pub fn rows_mut(&mut self) -> RowsIterMut<'_, T> {
         let stride = self.stride();
         let width = self.width();
-        let height = self.height();
-        let non_padded = &mut self.buf[0..stride * height + width - stride];
+        let len = self.valid_min_len(self.buf().len());
+        let non_padded = &mut self.buf_mut()[..len];
         RowsIterMut {
             width,
             inner: non_padded.chunks_mut(stride),
@@ -688,7 +690,7 @@ fn imgref_invalid_size(width: u32, height: u32, stride: usize, min_size: usize, 
 impl<T> ImgRefMut<'_, T> {
     #[cfg_attr(debug_assertions, track_caller)]
     fn valid_buf_mut(&mut self) -> &mut [T] {
-        let len = self.as_ref().valid_min_len();
+        let len = self.valid_min_len(self.buf().len());
         &mut self.buf_mut()[..len]
     }
 }
@@ -696,21 +698,20 @@ impl<T> ImgRefMut<'_, T> {
 impl<'buf, T> ImgRef<'buf, T> {
     #[cfg_attr(debug_assertions, track_caller)]
     fn valid_buf(&self) -> &'buf [T] {
-        &self.buf()[..self.valid_min_len()]
+        &self.buf()[..self.valid_min_len(self.buf().len())]
     }
+}
 
-    #[cfg_attr(debug_assertions, track_caller)]
+impl<T> Img<T> {
     #[inline(always)]
-    fn valid_min_len(&self) -> usize {
+    #[cfg_attr(debug_assertions, track_caller)]
+    fn valid_min_len(&self, buf_len: usize) -> usize {
         let stride = self.stride();
         let width = self.width();
         let height = self.height();
-        let buf = self.buf();
-        #[allow(deprecated)]
         if stride == 0 || stride < width {
-            imgref_invalid_size(self.width, self.height, stride, 0, buf.len());
+            imgref_invalid_size(width as u32, height as u32, stride, 0, buf_len);
         }
-        #[allow(deprecated)]
         let min_size = if height == 0 || width == 0 {
             0
         } else {
@@ -718,12 +719,11 @@ impl<'buf, T> ImgRef<'buf, T> {
                 .checked_mul(height - 1)
                 .and_then(|len| len.checked_add(width))
                 .unwrap_or_else(|| {
-                    imgref_invalid_size(self.width, self.height, stride, usize::MAX, buf.len())
+                    imgref_invalid_size(width as u32, height as u32, stride, usize::MAX, buf_len)
                 })
         };
-        #[allow(deprecated)]
-        if buf.len() < min_size {
-            imgref_invalid_size(self.width, self.height, stride, min_size, buf.len());
+        if buf_len < min_size {
+            imgref_invalid_size(width as u32, height as u32, stride, min_size, buf_len);
         }
         min_size
     }
@@ -926,6 +926,13 @@ mod tests {
     #[should_panic(expected = "Invalid ImgRef params")]
     fn oversized_dimensions() {
         let _ = Img::new_stride(vec![0u8; 1], 1usize << 32, 1, 1usize << 32);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid ImgRef params")]
+    fn rows_mut_len_overflow_uses_checked_length() {
+        let mut img = Img::new_stride(vec![0u8; 1], 2, 2, usize::MAX);
+        let _ = img.rows_mut();
     }
 
     #[test]
