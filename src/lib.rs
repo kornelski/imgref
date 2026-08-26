@@ -54,6 +54,7 @@ extern crate std;
 
 use alloc::borrow::{Cow, ToOwned};
 use alloc::vec::Vec;
+#[cfg(feature = "deprecated")]
 use core::slice;
 
 mod traits;
@@ -636,7 +637,7 @@ impl<Container> Img<Container> {
     ///
     /// ## Panics
     ///
-    /// If stride is 0.
+    /// If stride is 0 or smaller than width, or `width` or `height` won't fit in `u32`
     ///
     /// <div class="warning">
     ///
@@ -647,10 +648,9 @@ impl<Container> Img<Container> {
     #[allow(deprecated)]
     #[track_caller]
     pub fn new_stride(buf: Container, width: usize, height: usize, stride: usize) -> Self {
-        assert!(stride > 0);
-        assert!(stride >= width);
-        debug_assert!(height < u32::MAX as usize);
-        debug_assert!(width < u32::MAX as usize);
+        if stride == 0 || stride < width || width > u32::MAX as usize || height > u32::MAX as usize {
+            imgref_invalid_size(width as u32, height as u32, stride, 0, 0);
+        }
         Self {
             buf,
             width: width as u32,
@@ -920,6 +920,12 @@ mod tests {
         assert_eq!(0, img.rows().count());
         let _ = img.sub_image(1,0,0,0);
         let _ = img.sub_image_mut(0,0,1,0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid ImgRef params")]
+    fn oversized_dimensions() {
+        let _ = Img::new_stride(vec![0u8; 1], 1usize << 32, 1, 1usize << 32);
     }
 
     #[test]
