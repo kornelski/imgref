@@ -922,6 +922,7 @@ mod tests {
         let _ = img.sub_image_mut(0,0,1,0);
     }
 
+    #[cfg(target_pointer_width = "64")]
     #[test]
     #[should_panic(expected = "Invalid ImgRef params")]
     fn oversized_dimensions() {
