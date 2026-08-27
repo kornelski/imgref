@@ -71,6 +71,7 @@ fn index() {
     assert_eq!(5, img.sub_image_mut(1,1,1,1)[(0usize,0usize)]);
 }
 
+#[cfg(target_pointer_width = "64")]
 #[test]
 #[should_panic]
 fn index_u32_with_huge_stride_does_not_wrap() {
